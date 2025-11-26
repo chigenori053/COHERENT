@@ -104,19 +104,37 @@ class CoreRuntime(Engine):
 
     def _expressions_equivalent_up_to_scalar(self, expr1: str, expr2: str) -> bool:
         sym = self.computation_engine.symbolic_engine
+        
+        # Check if both are constants first
+        # If they are constants, they must be equal (ratio ~ 1)
+        # We don't want "1.0 is equivalent to 0.25"
+        try:
+            c1 = self._try_constant_value(sym.simplify(expr1))
+            c2 = self._try_constant_value(sym.simplify(expr2))
+            if c1 is not None and c2 is not None:
+                if abs(c2) < 1e-12:
+                    return abs(c1) < 1e-12
+                ratio = c1 / c2
+                return abs(ratio - 1.0) < 1e-9
+        except Exception:
+            pass
+
         ratio_expr = f"(({expr1})) / (({expr2}))"
         if sym.has_sympy():
             try:
                 ratio_internal = sym.to_internal(ratio_expr)
                 free_symbols = getattr(ratio_internal, "free_symbols", None)
                 if free_symbols is not None and len(free_symbols) == 0:
-                    return ratio_internal != 0
+                    # If it evaluates to a constant, check if it's not zero/infinite
+                    # But be careful with float precision
+                    pass
             except Exception:
                 pass
-        simplified = sym.simplify(ratio_expr)
-        constant_value = self._try_constant_value(simplified)
-        if constant_value is not None:
-            return abs(constant_value) > 1e-12
+        
+        # We used to simplify here, but it caused issues with near-zero denominators (e.g. 1 / 1e-16)
+        # resulting in large constants that looked like valid scalars.
+        # We will rely on numeric sampling which handles zero-checks better.
+        
         return self._numeric_scalar_equiv(expr1, expr2)
 
     def _try_constant_value(self, value: Any) -> float | None:
@@ -228,9 +246,6 @@ class CoreRuntime(Engine):
             
         before = self._current_expr
         after = self._normalize_expression(expr)
-        if "=" in expr:
-            self._equation_mode = True
-        
         # Default validation (symbolic)
         # Apply context if variables are bound
         if self._context:
@@ -243,10 +258,51 @@ class CoreRuntime(Engine):
         else:
             before_eval = before
             after_eval = after
+            
+        is_valid_symbolic = False
+
+        if "=" in expr:
+            self._equation_mode = True
+            # Check for "LHS = RHS" where LHS is equivalent to Before
+            lhs, _, rhs = expr.partition("=")
+            lhs = lhs.strip()
+            rhs = rhs.strip()
+            
+            # Check if LHS == Before
+            # We need to apply context if needed
+            if self._context:
+                try:
+                    lhs_eval = self.computation_engine.substitute(lhs, self._context)
+                    rhs_eval = self.computation_engine.substitute(rhs, self._context)
+                except CausalScriptError:
+                    lhs_eval = lhs
+                    rhs_eval = rhs
+            else:
+                lhs_eval = lhs
+                rhs_eval = rhs
+
+            is_lhs_equiv = self.computation_engine.symbolic_engine.is_equiv(before_eval, lhs_eval)
+            # We do NOT use scalar equivalence here. LHS must be strictly equivalent to Before
+            # to justify replacing Before with RHS as the new state.
+            
+            if is_lhs_equiv:
+                # Check if LHS == RHS
+                is_eqn_valid = self.computation_engine.symbolic_engine.is_equiv(lhs_eval, rhs_eval)
+                if not is_eqn_valid and self._equation_mode:
+                    is_eqn_valid = self._expressions_equivalent_up_to_scalar(lhs_eval, rhs_eval)
+                
+                if is_eqn_valid:
+                    # This is a valid transition: Before -> LHS -> RHS
+                    # We treat RHS as the new state
+                    # We override 'after' to be RHS for the result
+                    after = rhs
+                    is_valid_symbolic = True
+                    # Skip the standard check since we already verified it
         
-        is_valid_symbolic = self.computation_engine.symbolic_engine.is_equiv(before_eval, after_eval)
-        if not is_valid_symbolic and self._equation_mode:
-            is_valid_symbolic = self._expressions_equivalent_up_to_scalar(before_eval, after_eval)
+        if not is_valid_symbolic:
+             is_valid_symbolic = self.computation_engine.symbolic_engine.is_equiv(before_eval, after_eval)
+             if not is_valid_symbolic and self._equation_mode:
+                 is_valid_symbolic = self._expressions_equivalent_up_to_scalar(before_eval, after_eval)
         
         # Scenario validation
         scenario_results = {}
@@ -260,6 +316,37 @@ class CoreRuntime(Engine):
         is_valid = is_valid_symbolic
         if not is_valid and self._scenarios:
             is_valid = is_valid_scenarios
+
+        # Partial Calculation Logic
+        is_partial = False
+        is_partial_attempt = False
+        if not is_valid and "=" in expr:
+            # Check if this is a valid partial calculation
+            # 1. It must be a valid equation itself (LHS == RHS)
+            lhs, _, rhs = expr.partition("=")
+            lhs = lhs.strip()
+            rhs = rhs.strip()
+            
+            # Evaluate LHS and RHS to check equality
+            try:
+                lhs_in_before = self.computation_engine.symbolic_engine.is_subexpression(lhs, before)
+            except Exception:
+                lhs_in_before = False
+
+            try:
+                lhs_rhs_equiv = self.computation_engine.symbolic_engine.is_equiv(lhs, rhs)
+            except Exception:
+                lhs_rhs_equiv = False
+
+            if lhs_in_before:
+                is_partial_attempt = True
+
+            try:
+                if lhs_rhs_equiv and lhs_in_before:
+                    is_valid = True
+                    is_partial = True
+            except Exception:
+                is_partial = False
 
         # Fuzzy Validation Fallback
         fuzzy_result = None
@@ -300,24 +387,31 @@ class CoreRuntime(Engine):
             result["details"]["scenarios"] = scenario_results
             
         if fuzzy_result:
-             result["details"]["fuzzy_label"] = fuzzy_result.label.value
-             result["details"]["fuzzy_score"] = fuzzy_result.score.combined_score
-             
-             if "decision_action" in fuzzy_result.debug:
-                 result["details"]["decision_action"] = fuzzy_result.debug["decision_action"]
-             if "decision_utility" in fuzzy_result.debug:
-                 result["details"]["decision_utility"] = fuzzy_result.debug["decision_utility"]
-             if "decision_utils" in fuzzy_result.debug:
-                 result["details"]["decision_utils"] = fuzzy_result.debug["decision_utils"]
-             
-             if is_valid and not is_valid_symbolic:
-                 # If valid via fuzzy but not symbolic, suggest the 'before' state as the corrected form
-                 # or simply note that it was fuzzy matched.
-                 result["details"]["corrected_form"] = before
+            result["details"]["fuzzy_label"] = fuzzy_result.label.value
+            result["details"]["fuzzy_score"] = fuzzy_result.score.combined_score
+
+            if "decision_action" in fuzzy_result.debug:
+                result["details"]["decision_action"] = fuzzy_result.debug["decision_action"]
+            if "decision_utility" in fuzzy_result.debug:
+                result["details"]["decision_utility"] = fuzzy_result.debug["decision_utility"]
+            if "decision_utils" in fuzzy_result.debug:
+                result["details"]["decision_utils"] = fuzzy_result.debug["decision_utils"]
+
+            if is_valid and not is_valid_symbolic and not is_partial:
+                # If valid via fuzzy but not symbolic, suggest the 'before' state as the corrected form
+                # or simply note that it was fuzzy matched.
+                result["details"]["corrected_form"] = before
 
         if is_valid:
-            self._current_expr = after
+            if is_partial:
+                # Do NOT update current_expr for partial steps
+                result["details"]["partial"] = True
+            else:
+                self._current_expr = after
         else:
+            if is_partial_attempt:
+                # Treat incorrect partial calculations as critical mistakes
+                result["details"]["critical"] = True
             # Generate hint if invalid
             # Use the previous expression as the target for the hint
             hint = self.hint_engine.generate_hint(after, before, persona=self.hint_persona)
@@ -327,6 +421,7 @@ class CoreRuntime(Engine):
                 "details": hint.details
             }
             
+        print(f"DEBUG: Step '{expr}' -> Valid: {is_valid}, Partial: {is_partial}, Before: '{before}', After: '{after}'")
         return result
 
     def analyze_function(self, expr: str, variable: str = "x") -> Dict[str, Any]:

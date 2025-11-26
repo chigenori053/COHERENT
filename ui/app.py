@@ -74,82 +74,43 @@ comp_engine, val_engine, hint_engine, formatter = get_engines()
 def render_card(title, latex_content, status, hint=None, corrected_form=None, analysis=None):
     """Renders a result card."""
     border_color = "#4CAF50" if status == "ok" else "#FF5252"
-    bg_color = "rgba(76, 175, 80, 0.1)" if status == "ok" else "rgba(255, 82, 82, 0.1)"
     icon = "✅" if status == "ok" else "❌"
     
-    st.markdown(
-        f"""
-        <div style="
-            border: 2px solid {border_color};
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 15px;
-            background-color: {bg_color};
-        ">
-            <div style="font-weight: bold; margin-bottom: 5px; color: {border_color};">
-                {icon} {title}
-            </div>
-        """,
-        unsafe_allow_html=True
-    )
-    
-    if latex_content:
-        st.latex(latex_content)
-        
-    if corrected_form:
+    # Use a container with border (Streamlit >= 1.27)
+    # If border=True causes issues in older versions, we can remove it, but st.rerun() implies new version.
+    with st.container(border=True):
+        # Header
         st.markdown(
-            f"""
-            <div style="
-                margin-top: 10px;
-                padding: 10px;
-                background-color: rgba(33, 150, 243, 0.1);
-                border-radius: 5px;
-                border-left: 4px solid #2196F3;
-                color: #0D47A1;
-            ">
-                <strong>ℹ️ Corrected Form:</strong>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-        st.latex(corrected_form)
-        
-    if status != "ok" and hint:
-        st.markdown(
-            f"""
-            <div style="
-                margin-top: 10px;
-                padding: 10px;
-                background-color: rgba(255, 255, 255, 0.5);
-                border-radius: 5px;
-                border-left: 4px solid #FFC107;
-                color: #856404;
-            ">
-                <strong>💡 Hint:</strong> {hint}
-            </div>
-            """,
+            f"<h3 style='color: {border_color}; margin: 0; padding: 0;'>{icon} {title}</h3>",
             unsafe_allow_html=True
         )
         
-    if analysis:
-        with st.expander("🔍 Analysis Details"):
-            cols = st.columns(2)
-            with cols[0]:
-                st.markdown("**Fuzzy Match Score**")
-                score = analysis.get('fuzzy_score', 0.0)
-                st.progress(score)
-                st.caption(f"Score: {score:.3f}")
+        if latex_content:
+            st.latex(latex_content)
+        
+        if corrected_form:
+            st.info(f"Corrected Form:\n\n$${corrected_form}$$")
             
-            with cols[1]:
-                st.markdown("**Decision Logic**")
-                st.write(f"Action: `{analysis.get('decision_action', 'N/A')}`")
-                st.write(f"Utility: `{analysis.get('decision_utility', 0.0):.2f}`")
+        if status != "ok" and hint:
+            st.warning(f"Hint: {hint}")
+            
+        if analysis:
+            with st.expander("🔍 Analysis Details"):
+                cols = st.columns(2)
+                with cols[0]:
+                    st.markdown("**Fuzzy Match Score**")
+                    score = analysis.get('fuzzy_score', 0.0)
+                    st.progress(score)
+                    st.caption(f"Score: {score:.3f}")
                 
-            if 'decision_utils' in analysis:
-                st.caption("Utility Breakdown:")
-                st.json(analysis['decision_utils'])
-
-    st.markdown("</div>", unsafe_allow_html=True)
+                with cols[1]:
+                    st.markdown("**Decision Logic**")
+                    st.write(f"Action: `{analysis.get('decision_action', 'N/A')}`")
+                    st.write(f"Utility: `{analysis.get('decision_utility', 0.0):.2f}`")
+                    
+                if 'decision_utils' in analysis:
+                    st.caption("Utility Breakdown:")
+                    st.json(analysis['decision_utils'])
 
 # --- Layout ---
 
@@ -383,7 +344,12 @@ with main_col:
             st.rerun()
             
         except Exception as e:
-            st.session_state.logs.append(f"Error: {str(e)}")
+            st.session_state.logs.append({
+                'phase': 'System Error',
+                'rendered': str(e),
+                'status': 'error',
+                'meta': {}
+            })
             st.session_state.history.append({
                 "input": user_input,
                 "type": "error",

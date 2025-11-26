@@ -149,6 +149,8 @@ class Evaluator:
         self._state = "INIT"
         self._completed = False
         self._fatal_error = False
+        self._has_mistake = False
+        self._has_critical_mistake = False
         self._current_problem_expr: str | None = None
         self._last_expr_raw: str | None = None
         self._meta: Dict[str, str] = {}
@@ -156,6 +158,9 @@ class Evaluator:
         self._mode: str = "strict"
 
     def run(self) -> bool:
+        # Reset run-scoped flags
+        self._has_mistake = False
+        self._has_critical_mistake = False
         for node in self.program.body:
             if isinstance(node, ast.ProblemNode):
                 self._handle_problem(node)
@@ -188,7 +193,7 @@ class Evaluator:
                 exc=exc,
             )
         self._completed = True
-        return not self._fatal_error and self._state == "END"
+        return not self._fatal_error and not self._has_critical_mistake and self._state == "END"
 
     def _handle_problem(self, node: ast.ProblemNode) -> None:
         if self._state != "INIT":
@@ -259,6 +264,10 @@ class Evaluator:
             rule_id=result.get("rule_id"),
             meta=meta,
         )
+        if status == "mistake":
+            self._has_mistake = True
+            if meta.get("critical"):
+                self._has_critical_mistake = True
         if is_valid:
             self._last_expr_raw = node.expr
             self._state = "STEP_RUN"
@@ -307,6 +316,10 @@ class Evaluator:
             status=status,
             meta=meta,
         )
+        if status == "mistake":
+            self._has_mistake = True
+            if meta.get("critical"):
+                self._has_critical_mistake = True
         self._state = "END"
         if not node.is_done:
             self._last_expr_raw = node.expr

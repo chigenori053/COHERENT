@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
+from contextlib import contextmanager
 import concurrent.futures
 
 from .symbolic_engine import SymbolicEngine
@@ -63,6 +64,22 @@ class ComputationEngine:
             self.geometry = GeometryEngine()
         except ImportError:
             self.geometry = None
+
+    @contextmanager
+    def _safe_executor(self):
+        """
+        Prefer processes for parallelism, but gracefully fall back to threads when
+        process-based executors are not permitted (e.g., restricted environments).
+        """
+        try:
+            with concurrent.futures.ProcessPoolExecutor() as executor:
+                yield executor
+                return
+        except (PermissionError, NotImplementedError, OSError):
+            pass
+
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            yield executor
 
     def to_sympy(self, expr: str | Node) -> Any:
         """
@@ -285,7 +302,7 @@ class ComputationEngine:
         # We need to pass self.symbolic_engine. 
         # Ensure it is picklable (verified in planning).
         
-        with concurrent.futures.ProcessPoolExecutor() as executor:
+        with self._safe_executor() as executor:
             future_to_name = {
                 executor.submit(
                     _eval_scenario_task, 
@@ -316,7 +333,7 @@ class ComputationEngine:
         """
         results = {}
         
-        with concurrent.futures.ProcessPoolExecutor() as executor:
+        with self._safe_executor() as executor:
             future_to_name = {
                 executor.submit(
                     _check_scenario_task, 
