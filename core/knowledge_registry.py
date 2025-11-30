@@ -131,6 +131,10 @@ class KnowledgeRegistry:
             if is_before_numeric and node.domain == "algebra":
                 continue
 
+            # Fraction-specific patterns should not match when the input has no '/'.
+            if "/" in node.pattern_before and "/" not in before:
+                continue
+
             # Strict Rule Matching (AST Node Type Check)
             # Check if the rule's pattern_before top-level operator matches the input's top-level operator.
             # This prevents "Sticky Rule ID" (e.g., Pow matches Mul).
@@ -141,7 +145,8 @@ class KnowledgeRegistry:
             # Allow mismatch if one is "Symbol" or "Number" or "Other" (generic),
             # but enforce strictness if both are specific operators (Add, Mul, Pow).
             if expr_op and pattern_op:
-                if expr_op in {"Add", "Mul", "Pow"} and pattern_op in {"Add", "Mul", "Pow"}:
+                arithmetic_ops = {"Add", "Sub", "Mul", "Mult", "Div", "Pow"}
+                if expr_op in arithmetic_ops and pattern_op in arithmetic_ops:
                     if expr_op != pattern_op:
                         # Special case: a*a (Mul) can match a^2 (Pow) in some contexts, 
                         # but the spec says "Pow -> Mul ... category: exponents ... prioritize".
@@ -181,8 +186,18 @@ class KnowledgeRegistry:
                 # Special handling for calculation rules where output is a new variable (e.g. 'c')
                 if node.category == "calculation":
                     if self.engine.is_equiv(before, after):
-                        best_match = node
-                        best_after_match = after_structural_match
+                        # Apply best match logic
+                        if best_match is None:
+                            best_match = node
+                            best_after_match = after_structural_match
+                        else:
+                            if node.priority > best_match.priority:
+                                best_match = node
+                                best_after_match = after_structural_match
+                            elif node.priority == best_match.priority:
+                                if after_structural_match and not best_after_match:
+                                    best_match = node
+                                    best_after_match = True
                     continue
 
                 str_bindings = {k: str(v) for k, v in bind_before.items()}
@@ -190,14 +205,20 @@ class KnowledgeRegistry:
                 expected_after = self.engine.substitute(node.pattern_after, str_bindings)
                 
                 if self.engine.is_equiv(after, expected_after):
+                    # Best match logic
                     if best_match is None:
                         best_match = node
                         best_after_match = after_structural_match
-                    elif after_structural_match and not best_after_match:
-                        # Prefer rules whose output pattern structurally matches the 'after' expression.
-                        best_match = node
-                        best_after_match = True
-                    
+                    else:
+                        # Prioritize by Priority first
+                        if node.priority > best_match.priority:
+                            best_match = node
+                            best_after_match = after_structural_match
+                        elif node.priority == best_match.priority:
+                            # Tie-break by after_match
+                            if after_structural_match and not best_after_match:
+                                best_match = node
+                                best_after_match = True
             except Exception as e:
                 # print(f"DEBUG: {node.id} exception: {e}")
                 continue
