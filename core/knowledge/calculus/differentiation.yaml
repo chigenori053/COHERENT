@@ -1,0 +1,43 @@
+# Differentiation Rules
+
+- id: CALC-DIFF-POW
+  domain: calculus
+  category: calculation
+  pattern_before: "Derivative(x**n, x)"
+  pattern_after: "n * x**(n - 1)"
+  description: "Power Rule for Differentiation"
+  priority: 160
+
+- id: CALC-DIFF-SUM
+  domain: calculus
+  category: simplification
+  pattern_before: "Derivative(f + g, x)"
+  pattern_after: "Derivative(f, x) + Derivative(g, x)"
+  description: "Sum Rule for Differentiation"
+  priority: 150
+
+- id: CALC-DIFF-PROD
+  domain: calculus
+  category: calculation
+  pattern_before: "Derivative(f * g, x)"
+  pattern_after: "f * Derivative(g, x) + g * Derivative(f, x)"
+  description: "Product Rule for Differentiation"
+  priority: 150
+
+- id: CALC-DIFF-CONST
+  domain: calculus
+  category: calculation
+  pattern_before: "Derivative(c, x)"
+  pattern_after: "0"
+  description: "Derivative of a constant"
+  priority: 170
+  condition: "is_numeric(c) or (c.is_Symbol and c != x)"
+
+- id: CALC-DIFF-CONST-MUL
+  domain: calculus
+  category: simplification
+  pattern_before: "Derivative(c * f, x)"
+  pattern_after: "c * Derivative(f, x)"
+  description: "Constant Multiple Rule for Differentiation"
+  priority: 150
+  condition: "is_numeric(c) or (c.is_Symbol and c != x)"

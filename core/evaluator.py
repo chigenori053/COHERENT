@@ -49,6 +49,7 @@ class SymbolicEvaluationEngine(Engine):
 
     def __post_init__(self) -> None:
         self._current_expr: str | None = None
+        self._scenarios: Dict[str, Dict[str, Any]] = {}
         # Initialize classifier
         # We need to import ExpressionClassifier inside the method or assume it's available globally
         # It is imported at module level in previous step (Step 843).
@@ -61,9 +62,8 @@ class SymbolicEvaluationEngine(Engine):
         self._context[name] = value
 
     def add_scenario(self, name: str, context: Dict[str, Any]) -> None:
-        # SymbolicEvaluationEngine doesn't support scenarios natively yet, 
-        # but we can ignore or log warning. For now, just pass.
-        pass
+        """Add a scenario context."""
+        self._scenarios[name] = context
 
     def evaluate(self, expr: str, context: Optional[Dict[str, Any]] = None) -> Any:
         eval_context = self._context.copy()
