@@ -169,16 +169,58 @@ class KnowledgeRegistry:
             nodes.append(current)
         return nodes
 
-    def match(self, before: str, after: str) -> Optional[KnowledgeNode]:
+    def match(self, before: str, after: str, context_domains: List[str] | None = None) -> Optional[KnowledgeNode]:
         """
         Identifies the rule that transforms 'before' into 'after'.
-        Uses a RuleMap-based priority search.
+        Uses a RuleMap-based priority search, filtered/prioritized by context_domains.
         """
         # Pre-check: Is the input expression numeric?
         is_before_numeric = self.engine.is_numeric(before)
         
+        # Determine maps to search
+        maps_to_search = []
+        
+        if context_domains:
+            # 1. Prioritize maps matching the context domains
+            # We search maps whose ID (or name?) matches the domain.
+            # Map IDs: arithmetic, algebra_basic, algebra_advanced, calculus, etc.
+            # Context Domains: arithmetic, algebra, calculus
+            
+            # Strategy:
+            # - Iterate context_domains in order.
+            # - For each domain, find matching maps.
+            # - Add them to search list.
+            # - Then add remaining maps (as fallback)? Or strict filtering?
+            # User request implies "Mapped Symbolic Engine -> Mapped Calculation Rules".
+            # So we should probably prioritize context maps.
+            
+            seen_map_ids = set()
+            
+            for domain in context_domains:
+                # Find maps that belong to this domain
+                # We can check if map.id starts with domain or equals it.
+                # e.g. domain="algebra" matches "algebra_basic", "algebra_advanced"
+                
+                for m in self.maps:
+                    if m.id == domain or m.id.startswith(domain + "_"):
+                        if m.id not in seen_map_ids:
+                            maps_to_search.append(m)
+                            seen_map_ids.add(m.id)
+            
+            # Add remaining maps as fallback (optional, but good for safety)
+            # If we want strict mode, we might skip this.
+            # But "arithmetic" is often needed for "algebra".
+            # Our classifier adds "arithmetic" to "algebra" context, so it should be fine.
+            # Let's add remaining maps at the end just in case.
+            for m in self.maps:
+                if m.id not in seen_map_ids:
+                    maps_to_search.append(m)
+        else:
+            # Default: Search all maps in priority order
+            maps_to_search = self.maps
+
         # 1. Search through Maps
-        for rule_map in self.maps:
+        for rule_map in maps_to_search:
             for rule_id in rule_map.rules:
                 node = self.rules_by_id.get(rule_id)
                 if not node:

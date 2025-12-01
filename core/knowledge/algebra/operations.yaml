@@ -12,3 +12,4 @@
   pattern_before: "x + x"
   pattern_after: "2 * x"
   description: "同類項の加算"
+  priority: 65

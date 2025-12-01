@@ -11,7 +11,9 @@ from .learning_logger import LearningLogger
 from .symbolic_engine import SymbolicEngine
 from .knowledge_registry import KnowledgeRegistry
 from .fuzzy.judge import FuzzyJudge
+from .fuzzy.judge import FuzzyJudge
 from .fuzzy.types import NormalizedExpr
+from .classifier import ExpressionClassifier
 
 
 class Engine:
@@ -47,6 +49,10 @@ class SymbolicEvaluationEngine(Engine):
 
     def __post_init__(self) -> None:
         self._current_expr: str | None = None
+        # Initialize classifier
+        # We need to import ExpressionClassifier inside the method or assume it's available globally
+        # It is imported at module level in previous step (Step 843).
+        self.classifier = ExpressionClassifier(self.symbolic_engine)
 
     def set(self, expr: str) -> None:
         self._current_expr = expr
@@ -85,7 +91,9 @@ class SymbolicEvaluationEngine(Engine):
         rule_id: str | None = None
         rule_meta: dict[str, Any] | None = None
         if valid and self.knowledge_registry is not None:
-            matched = self.knowledge_registry.match(before, after)
+            # Classify the 'before' expression to determine context
+            domains = self.classifier.classify(before)
+            matched = self.knowledge_registry.match(before, after, context_domains=domains)
             if matched:
                 rule_id = matched.id
                 rule_meta = matched.to_metadata()
@@ -146,6 +154,7 @@ class Evaluator:
         self.engine = engine
         self.learning_logger = learning_logger or LearningLogger()
         self._fuzzy_judge = fuzzy_judge
+        self.classifier = ExpressionClassifier(self.engine)
         self._state = "INIT"
         self._completed = False
         self._fatal_error = False
