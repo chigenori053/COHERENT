@@ -401,21 +401,14 @@ class Evaluator:
             final_sub_result = result["after"]
 
             if target_variable:
-                # Variable Binding Mode
-                # Store the result in the variable
-                self.engine.set_variable(target_variable, final_sub_result)
-                # Restore parent expression (no replacement)
-                # But wait, if we restore parent_expr, we lose any progress made in parent context?
-                # Actually, sub-problems usually block parent progress.
-                # So restoring parent_expr (which was the state before sub-problem) is correct,
-                # because the sub-problem was "independent" or "side-calculation".
-                # However, if the sub-problem was meant to *advance* the parent, it should have been inline.
-                # Variable binding implies we are calculating something to be used *later*.
-                # So we restore the parent expression as is.
+                # Variable Binding Mode: store result and restore parent untouched.
+                try:
+                    self.engine.set_variable(target_variable, final_sub_result)
+                except Exception:
+                    pass
                 new_parent_expr = parent_expr
             else:
                 # Legacy Mode (Inline Replacement)
-                # Substitute back
                 new_parent_expr = self._symbolic_engine.replace(parent_expr, target_sub, final_sub_result)
             
             self.engine.set(new_parent_expr)
@@ -430,12 +423,21 @@ class Evaluator:
                     status="ok"
                 )
 
-            self._log(
-                phase="sub_problem_end",
-                expression=final_sub_result,
-                rendered=f"Sub-problem done. Return to: {new_parent_expr}",
-                status="ok"
-            )
+            if target_variable:
+                self._log(
+                    phase="sub_problem_end",
+                    expression=final_sub_result,
+                    rendered=f"Sub-problem stored: {target_variable} = {final_sub_result}",
+                    status="ok",
+                    meta={"target_variable": target_variable},
+                )
+            else:
+                self._log(
+                    phase="sub_problem_end",
+                    expression=final_sub_result,
+                    rendered=f"Sub-problem done. Return to: {new_parent_expr}",
+                    status="ok"
+                )
             
             self._state = "STEP_RUN"
             return
@@ -711,8 +713,8 @@ class Evaluator:
 
         self._log(
             phase="sub_problem",
-            expression=getattr(node, "raw_expr", node.expr),
-            rendered=f"Sub-problem: {getattr(node, 'raw_expr', node.expr)}",
+            expression=f"{node.target_variable} = {node.expr}" if node.target_variable else getattr(node, "raw_expr", node.expr),
+            rendered=f"Sub-problem: {node.target_variable} = {node.expr}" if node.target_variable else f"Sub-problem: {getattr(node, 'raw_expr', node.expr)}",
             status="ok"
         )
         self._state = "PROBLEM_SET"

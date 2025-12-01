@@ -172,19 +172,14 @@ class Parser:
         if content.strip().lower().startswith("problem:"):
             content = content.strip()[8:].strip()
             
-        # Check for "Name = Expression" syntax
+        # Check for "Name = Expression" syntax (top-level '=' only)
         name = None
-        if "=" in content:
-            # Simple check: split by first "="
-            parts = content.split("=", 1)
-            # Ensure left side is a valid identifier (simple check)
-            possible_name = parts[0].strip()
-            # Heuristic: Identifier should not contain complex chars like (, ), +, etc.
-            # But "x = 1" is also valid expression.
-            # We assume if it looks like an identifier, it is a name.
+        assignment = self._split_top_level_assignment(content)
+        if assignment:
+            possible_name, rhs = assignment
             if re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", possible_name):
                 name = possible_name
-                content = parts[1].strip()
+                content = rhs
 
         expr = self._normalize_expr(content)
         if not expr:
@@ -194,19 +189,14 @@ class Parser:
     def _parse_sub_problem(self, content: str, number: int) -> ast.SubProblemNode:
         raw_expr = content.strip()
         
-        # Check for "Variable = Expression" syntax
+        # Check for "Variable = Expression" syntax (top-level '=' only)
         target_variable = None
-        if "=" in content:
-            parts = content.split("=", 1)
-            possible_var = parts[0].strip()
+        assignment = self._split_top_level_assignment(content)
+        if assignment:
+            possible_var, rhs = assignment
             if re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", possible_var):
                 target_variable = possible_var
-                content = parts[1].strip()
-                # Update raw_expr to be just the expression part for consistency?
-                # Or keep full string? Spec says raw_expr is "Original expression text".
-                # Let's keep raw_expr as the full content for now, or maybe just the expression part?
-                # If we want to use it for display, maybe expression part is better.
-                # But let's stick to the expression part for normalization.
+                content = rhs
         
         expr = self._normalize_expr(content)
         if not expr:
@@ -377,6 +367,21 @@ class Parser:
 
     def _normalize_expr(self, value: str) -> str:
         return CausalScriptInputParser.normalize(value)
+
+    def _split_top_level_assignment(self, text: str) -> tuple[str, str] | None:
+        """
+        Split on the first '=' that is not nested in parentheses/brackets/braces.
+        Returns (lhs, rhs) or None if no such '=' exists.
+        """
+        depth = 0
+        for idx, ch in enumerate(text):
+            if ch in "([{":
+                depth += 1
+            elif ch in ")]}":
+                depth = max(depth - 1, 0)
+            elif ch == "=" and depth == 0:
+                return text[:idx].strip(), text[idx + 1 :].strip()
+        return None
 
     def _normalize_statement(self, statement: str) -> str:
         stripped = statement.strip()
