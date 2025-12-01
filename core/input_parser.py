@@ -24,6 +24,7 @@ class CausalScriptInputParser:
         "sinh",
         "cosh",
         "tanh",
+        "integrate",
     }
     _KNOWN_CONSTANTS = {"pi", "e"}
     _UNARY_PRECEDERS = {"(", "+", "-", "*", "/", "**"}
@@ -38,10 +39,108 @@ class CausalScriptInputParser:
         tokens = CausalScriptInputParser.normalize_unicode(tokens)
         tokens = CausalScriptInputParser.normalize_power(tokens)
         tokens = CausalScriptInputParser.expand_mixed_numbers(tokens)
+        tokens = CausalScriptInputParser.normalize_integrals(tokens)
         tokens = CausalScriptInputParser.split_concatenated_identifiers(tokens)
         tokens = CausalScriptInputParser.insert_implicit_multiplication(tokens)
         tokens = CausalScriptInputParser.normalize_functions(tokens)
         return CausalScriptInputParser.to_string(tokens)
+
+    @staticmethod
+    def normalize_integrals(tokens: List[str]) -> List[str]:
+        """
+        Convert integral syntax (∫ f(x) dx) to integrate(f(x), x) or integrate(f(x), (x, a, b)).
+        Handles nested integrals by processing innermost first (last '∫' in tokens).
+        """
+        while '∫' in tokens:
+            try:
+                # Find the last '∫' to handle innermost first
+                indices = [i for i, t in enumerate(tokens) if t == '∫']
+                if not indices:
+                    break
+                start_idx = indices[-1]
+                
+                current = start_idx + 1
+                lower_bound = None
+                upper_bound = None
+                
+                # Parse bounds (allow any order)
+                found_bound = True
+                while found_bound:
+                    found_bound = False
+                    if current < len(tokens) and tokens[current] == '_':
+                         current += 1
+                         bound_tokens, current = CausalScriptInputParser._consume_function_operand(tokens, current)
+                         lower_bound = CausalScriptInputParser.to_string(bound_tokens)
+                         found_bound = True
+                    elif current < len(tokens) and tokens[current].startswith('_') and len(tokens[current]) > 1:
+                         lower_bound = tokens[current][1:]
+                         current += 1
+                         found_bound = True
+                    elif current < len(tokens) and tokens[current] == '**':
+                         current += 1
+                         bound_tokens, current = CausalScriptInputParser._consume_function_operand(tokens, current)
+                         upper_bound = CausalScriptInputParser.to_string(bound_tokens)
+                         found_bound = True
+                
+                # Scan for differential (d<var> or d <var>)
+                diff_idx = -1
+                var_name = None
+                consumed_tokens_for_diff = 0
+                
+                for k in range(current, len(tokens)):
+                    t = tokens[k]
+                    # Check for combined differential "dx"
+                    if t.startswith('d') and len(t) > 1 and t[1:].isidentifier():
+                        diff_idx = k
+                        var_name = t[1:]
+                        consumed_tokens_for_diff = 1
+                        break
+                    # Check for separated differential "d" "x"
+                    if t == 'd' and k + 1 < len(tokens) and tokens[k+1].isidentifier():
+                        diff_idx = k
+                        var_name = tokens[k+1]
+                        consumed_tokens_for_diff = 2
+                        break
+                
+                if diff_idx == -1:
+                    # Error: No differential found for this integral.
+                    # Replace '∫' to avoid infinite loop.
+                    tokens[start_idx] = 'INTEGRAL_ERROR'
+                    continue
+                
+                # Extract integrand
+                integrand_tokens = tokens[current : diff_idx]
+                
+                # Construct replacement: integrate(integrand, var) or integrate(integrand, (var, lower, upper))
+                replacement = ['integrate', '(']
+                replacement.extend(integrand_tokens)
+                replacement.append(',')
+                
+                if lower_bound is not None and upper_bound is not None:
+                    replacement.append('(')
+                    replacement.append(var_name)
+                    replacement.append(',')
+                    replacement.append(lower_bound)
+                    replacement.append(',')
+                    replacement.append(upper_bound)
+                    replacement.append(')')
+                else:
+                    replacement.append(var_name)
+                
+                replacement.append(')')
+                
+                # Replace tokens
+                end_replace_idx = diff_idx + consumed_tokens_for_diff
+                tokens[start_idx : end_replace_idx] = replacement
+                
+            except Exception:
+                # Safety break to prevent infinite loops on error
+                if '∫' in tokens:
+                    idx = tokens.index('∫')
+                    tokens[idx] = 'INTEGRAL_ERROR'
+                break
+                
+        return tokens
 
     @staticmethod
     def tokenize(expr: str) -> List[str]:
@@ -99,6 +198,8 @@ class CausalScriptInputParser:
                 result.append("SQRT")
             elif token == "π":
                 result.append("pi")
+            elif token == "∫":
+                result.append("∫")
             else:
                 result.append(token)
         return result
