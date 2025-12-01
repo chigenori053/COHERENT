@@ -208,10 +208,11 @@ class Parser:
         if content.strip().lower().startswith("step:"):
             content = content.strip()[5:].strip()
 
+        raw = content.strip()
         expr = self._normalize_expr(content)
         if not expr:
             raise SyntaxError(f"Step expression required on line {number}.")
-        return ast.StepNode(step_id=step_id, expr=expr, line=number)
+        return ast.StepNode(step_id=step_id, expr=expr, raw_expr=raw, line=number)
 
     def _parse_step_block(self, block_lines: List[str], number: int) -> ast.StepNode:
         data = self._parse_mapping(block_lines)
@@ -220,7 +221,8 @@ class Parser:
         note = data.get("note")
         if not isinstance(after, str) or not after.strip():
             raise SyntaxError(f"Step block missing 'after' expression near line {number}.")
-        node = ast.StepNode(expr=self._normalize_expr(after.strip()), line=number)
+        raw_after = after.strip()
+        node = ast.StepNode(expr=self._normalize_expr(raw_after), raw_expr=raw_after, line=number)
         if isinstance(before, str):
             normalized_before = self._normalize_expr(before.strip())
             node.before_expr = normalized_before

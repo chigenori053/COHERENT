@@ -38,6 +38,22 @@
 
 ---
 
+## 新規対応 (v2.6 draft 反映)
+
+### High Priority
+| ID | タスク | 内容 | 期限 | 状態 |
+|----|---------|------|------|------|
+| RENDER-01 | LaTeX レンダリング回帰テスト | `core/latex_formatter.py` で指数・負数乗算の崩れ防止をテスト追加（2**3 が 23 にならないことを確認） | ASAP | 完了 |
+| LOG-01 | 生入力ログ保持 | Evaluator で `raw_expr` を優先して LearningLogger に記録し、SymPy 正規化後ではなくユーザー入力を表示できるようにする | ASAP | 完了 |
+
+### Medium Priority
+| ID | タスク | 内容 | 期限 | 状態 |
+|----|---------|------|------|------|
+| RULE-05 | 減算構造マッチ改良 | `core/knowledge_registry.py` で `a - b` 構造が崩れないようマッチ前に表記を調整し、ARITH-CALC-SUB を検出しやすくする | ASAP | 完了 |
+| EXEC-03 | Executor ライフサイクル改善 | `core/computation_engine.py` で ProcessPoolExecutor をインスタンス共有にし、シナリオ並列評価のオーバーヘッドを削減 | ASAP | 完了 |
+
+---
+
 ## 開発状況サマリー
 - **完了済み**: DSL v2.5 対応、Evaluator v2、LearningLogger v2、CausalEngine v1、CLI 基本実装 (v2.2 までの主要タスク)
 - **現在**: `CausalScript_Core_Extended_Spec.md` に基づく Core 機能の拡張フェーズ。計算・検証・ヒント生成機能の追加を行い、教育利用におけるフィードバック機能を強化する。

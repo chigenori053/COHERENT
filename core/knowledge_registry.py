@@ -154,9 +154,14 @@ class KnowledgeRegistry:
                         # Let's trust the spec: "Pre-check: before and after top-level operators ... compare".
                         continue
 
+            expr_for_match = before
+            # Preserve subtraction structure when pattern expects '-'
+            if "-" in node.pattern_before and "+ -" in before:
+                expr_for_match = before.replace("+ -", "- ")
+
             # Phase 1: Structural Filtering
             # Match 'before' against the rule's input pattern
-            bind_before = self.engine.match_structure(before, node.pattern_before)
+            bind_before = self.engine.match_structure(expr_for_match, node.pattern_before)
             
             # Fallback for Power Definition: (x-y)*(x-y) vs a*a
             # If strict match fails, try relaxing it if the rule is about exponents/expansion

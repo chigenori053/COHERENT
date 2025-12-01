@@ -10,6 +10,11 @@ def test_format_expression():
     assert formatter.format_expression("x^2") == "x^{2}"
     if sym_engine.has_sympy():
         assert formatter.format_expression("1/2") == r"\frac{1}{2}"
+        # Ensure exponents are preserved and not concatenated (e.g., 2**3 -> 2^{3}, not "23").
+        assert formatter.format_expression("2**3") == "2^{3}"
+        # Negative multiplication should keep the sign visible.
+        latex_neg = formatter.format_expression("-2*x")
+        assert "-" in latex_neg and ("2" in latex_neg or r"2" in latex_neg)
 
 def test_format_step():
     sym_engine = SymbolicEngine()

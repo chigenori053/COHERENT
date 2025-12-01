@@ -329,8 +329,8 @@ class Evaluator:
 
         self._log(
             phase="step",
-            expression=node.expr,
-            rendered=f"Step ({node.step_id or 'unnamed'}): {node.expr}",
+            expression=node.raw_expr or node.expr,
+            rendered=f"Step ({node.step_id or 'unnamed'}): {node.raw_expr or node.expr}",
             status=status,
             rule_id=result.get("rule_id"),
             meta=meta,
@@ -341,7 +341,7 @@ class Evaluator:
             if meta.get("critical"):
                 self._has_critical_mistake = True
         if is_valid:
-            self._last_expr_raw = node.expr
+            self._last_expr_raw = node.raw_expr or node.expr
             self._state = "STEP_RUN"
             return
 

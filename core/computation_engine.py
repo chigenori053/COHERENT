@@ -60,26 +60,33 @@ class ComputationEngine:
         """
         self.symbolic_engine = symbolic_engine
         self.variables: Dict[str, Any] = {}
+        self._shared_executor: concurrent.futures.Executor | None = None
+        self._shared_executor_kind: str | None = None
         try:
             self.geometry = GeometryEngine()
         except ImportError:
             self.geometry = None
 
-    @contextmanager
-    def _safe_executor(self):
+    def _get_executor(self) -> concurrent.futures.Executor:
         """
-        Prefer processes for parallelism, but gracefully fall back to threads when
-        process-based executors are not permitted (e.g., restricted environments).
+        Lazily initialize and cache an executor to avoid per-call overhead.
+        Prefers processes but falls back to threads if processes are unavailable.
         """
+        if self._shared_executor is not None:
+            return self._shared_executor
         try:
-            with concurrent.futures.ProcessPoolExecutor() as executor:
-                yield executor
-                return
+            self._shared_executor = concurrent.futures.ProcessPoolExecutor()
+            self._shared_executor_kind = "process"
         except (PermissionError, NotImplementedError, OSError):
-            pass
+            self._shared_executor = concurrent.futures.ThreadPoolExecutor()
+            self._shared_executor_kind = "thread"
+        return self._shared_executor
 
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            yield executor
+    def _shutdown_executor(self) -> None:
+        if self._shared_executor is not None:
+            self._shared_executor.shutdown(wait=False)
+            self._shared_executor = None
+            self._shared_executor_kind = None
 
     def to_sympy(self, expr: str | Node) -> Any:
         """
@@ -298,24 +305,20 @@ class ComputationEngine:
         """
         results = {}
         
-        # Prepare arguments for each task
-        # We need to pass self.symbolic_engine. 
-        # Ensure it is picklable (verified in planning).
-        
-        with self._safe_executor() as executor:
-            future_to_name = {
-                executor.submit(
-                    _eval_scenario_task, 
-                    name, 
-                    expr, 
-                    {**self.variables, **context}, 
-                    self.symbolic_engine
-                ): name 
-                for name, context in scenarios.items()
-            }
-            for future in concurrent.futures.as_completed(future_to_name):
-                name, result = future.result()
-                results[name] = result
+        executor = self._get_executor()
+        future_to_name = {
+            executor.submit(
+                _eval_scenario_task, 
+                name, 
+                expr, 
+                {**self.variables, **context}, 
+                self.symbolic_engine
+            ): name 
+            for name, context in scenarios.items()
+        }
+        for future in concurrent.futures.as_completed(future_to_name):
+            name, result = future.result()
+            results[name] = result
                 
         return results
 
@@ -333,21 +336,21 @@ class ComputationEngine:
         """
         results = {}
         
-        with self._safe_executor() as executor:
-            future_to_name = {
-                executor.submit(
-                    _check_scenario_task, 
-                    name, 
-                    expr1, 
-                    expr2, 
-                    {**self.variables, **context}, 
-                    self.symbolic_engine
-                ): name 
-                for name, context in scenarios.items()
-            }
-            for future in concurrent.futures.as_completed(future_to_name):
-                name, result = future.result()
-                results[name] = result
+        executor = self._get_executor()
+        future_to_name = {
+            executor.submit(
+                _check_scenario_task, 
+                name, 
+                expr1, 
+                expr2, 
+                {**self.variables, **context}, 
+                self.symbolic_engine
+            ): name 
+            for name, context in scenarios.items()
+        }
+        for future in concurrent.futures.as_completed(future_to_name):
+            name, result = future.result()
+            results[name] = result
                 
         return results
 

@@ -142,6 +142,7 @@ class ProblemNode(Node):
 class StepNode(Node):
     step_id: str | None = None
     expr: str = ""
+    raw_expr: str | None = None
     ast: object | None = None
     before_expr: str | None = None
     note: str | None = None

@@ -370,8 +370,12 @@ class SymbolicEngine:
             # 1. "1 \cdot " (e.g. 1/2 -> 1 * 1/2)
             latex = latex.replace(r"1 \cdot ", "")
             
-            # Clean up (-1) \cdot 0 -> -0 if desired, or just leave it explicit.
-            # User asked to "insert operators", so explicit \cdot is good.
+            # 2. Replace "\left(-1\right) \cdot" with "-" (e.g. (-1)*0 -> -0)
+            latex = latex.replace(r"\left(-1\right) \cdot ", "-")
+            
+            # 3. Handle "+ -" -> "-" (e.g. + -0 -> - 0)
+            latex = latex.replace(r"+ -", "- ")
+            
             return latex
         except Exception:
             return expr

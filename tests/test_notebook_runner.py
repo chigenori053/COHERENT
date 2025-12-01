@@ -16,7 +16,7 @@ def test_execute_mathlang_accepts_notebook_friendly_code() -> None:
     )
     lines = execute_mathlang(source)
     assert "problem: (x - y)**2" in lines
-    assert "step2: x**2 - 2*x*y + y**2" in lines
+    assert "step2: x^2 -2xy +y^2" in lines or "step2: x**2 - 2*x*y + y**2" in lines
     assert "end: done" in lines
 
 
