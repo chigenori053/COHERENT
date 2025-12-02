@@ -103,11 +103,17 @@ def render_test_report(step_index, step_data):
         f_cols = st.columns(2)
         with f_cols[0]:
             st.caption("Input Formula")
-            st.latex(step_data['latex'])
+            if render_latex:
+                st.latex(step_data['latex'])
+            else:
+                st.code(step_data.get('raw', ''))
         with f_cols[1]:
             st.caption("Evaluated Formula")
             if 'evaluated' in step_data['analysis']:
-                st.latex(step_data['analysis']['evaluated'])
+                if render_latex:
+                    st.latex(step_data['analysis']['evaluated'])
+                else:
+                    st.code(step_data['analysis'].get('evaluated_raw', ''))
             else:
                 st.markdown("*Not available*")
         
@@ -199,6 +205,9 @@ with st.sidebar:
         ["balanced", "sparta", "support"],
         help="Defines the personality and utility function for Hint Selection."
     )
+    
+    st.subheader("Display")
+    render_latex = st.checkbox("Render LaTeX", value=True, help="Toggle between LaTeX rendering and raw text.")
     
     st.divider()
     if st.button("Clear History"):
@@ -297,6 +306,7 @@ end: x^2 - 4xy + 4y^2"""
                         # 1. Prepare Step Data for Report
                         step_data = {
                             "phase": record['phase'],
+                            "raw": current_expr,
                             "latex": formatter.format_expression(current_expr) if current_expr else "",
                             "status": record.get('status', 'ok'),
                             "analysis": {},
@@ -310,7 +320,9 @@ end: x^2 - 4xy + 4y^2"""
                             step_data['analysis']['fuzzy_score'] = meta['fuzzy_score']
                             step_data['analysis']['fuzzy_label'] = meta.get('fuzzy_label')
                         if 'evaluated' in meta:
-                            step_data['analysis']['evaluated'] = formatter.format_expression(str(meta['evaluated']))
+                            evaluated_str = str(meta['evaluated'])
+                            step_data['analysis']['evaluated_raw'] = evaluated_str
+                            step_data['analysis']['evaluated'] = formatter.format_expression(evaluated_str)
                         if 'decision_action' in meta:
                             step_data['analysis']['decision_action'] = meta['decision_action']
                             step_data['analysis']['decision_utility'] = meta.get('decision_utility')

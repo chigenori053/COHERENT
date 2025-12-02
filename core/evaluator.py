@@ -596,12 +596,13 @@ class Evaluator:
             result = self.engine.evaluate(node.expect, context=assume_context)
             if isinstance(result, dict) and result.get("not_evaluatable"):
                 raise EvaluationError("not_evaluatable")
+            result_str = self._symbolic_engine.to_string(result)
             self._log(
                 phase="counterfactual",
                 expression=node.expect,
-                rendered=f"Counterfactual: expect {node.expect} -> {result}",
+                rendered=f"Counterfactual: expect {node.expect} -> {result_str}",
                 status="ok",
-                meta={"assume": node.assume, "result": result},
+                meta={"assume": node.assume, "result": result_str},
             )
         except EvaluationError as exc:
             self._fatal(
@@ -636,12 +637,16 @@ class Evaluator:
                 )
         
         self.engine.add_scenario(node.name, context)
+        
+        # Stringify context values for logging to avoid JSON serialization issues
+        log_context = {k: self._symbolic_engine.to_string(v) for k, v in context.items()}
+        
         self._log(
             phase="scenario",
             expression=None,
             rendered=f"Scenario added: {node.name}",
             status="ok",
-            meta={"context": context},
+            meta={"context": log_context},
         )
 
     def _handle_sub_problem(self, node: ast.SubProblemNode) -> None:
