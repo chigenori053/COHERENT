@@ -197,7 +197,7 @@ class SymbolicEngine:
         try:
             # Ensure 'e' is treated as Euler's number and 'pi' as pi
             # Map 'integrate' to 'Integral' to prevent eager evaluation (Late Evaluation Mode)
-            local_dict = {"e": _sympy.E, "pi": _sympy.pi, "integrate": _sympy.Integral}
+            local_dict = {"e": _sympy.E, "pi": _sympy.pi, "integrate": _sympy.Integral, "Integral": _sympy.Integral, "Subs": _sympy.Subs}
             return _sympy.sympify(expr, locals=local_dict)
         except Exception as exc:  # pragma: no cover - SymPy provides details.
             raise InvalidExprError(str(exc)) from exc
@@ -537,7 +537,7 @@ class SymbolicEngine:
             from sympy import Wild
             from sympy.parsing.sympy_parser import parse_expr
             
-            local_dict = {"e": _sympy.E, "pi": _sympy.pi, "integrate": _sympy.Integral}
+            local_dict = {"e": _sympy.E, "pi": _sympy.pi, "integrate": _sympy.Integral, "Integral": _sympy.Integral, "Subs": _sympy.Subs}
             
             # 1. Parse the concrete expression
             # Use evaluate=True to allow basic simplification like (x-y)*(x-y) -> (x-y)**2
@@ -707,7 +707,10 @@ class SymbolicEngine:
                 return type(node.op).__name__
             if isinstance(node, py_ast.Call):
                 if isinstance(node.func, py_ast.Name):
-                    return node.func.id
+                    name = node.func.id
+                    if name == "integrate":
+                        return "Integral"
+                    return name
                 return "Call"
             if isinstance(node, py_ast.Num) or isinstance(node, py_ast.Constant):
                 return "Number"

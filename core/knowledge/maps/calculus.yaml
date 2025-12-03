@@ -3,9 +3,9 @@ name: "Calculus"
 description: "Calculus operations (differentiation, integration, limits)."
 priority: 60
 rules:
-  - CALC-INT-DEF
-  - CALC-INT-POW
-  - CALC-INT-CONST
+  - CALC-DEF-INT
+  - CALC-INT-POWER
+  - CALC-INT-LINEAR
   - CALC-INT-CONST-VAL
   - CALC-INT-EVAL
   - CALC-INT-EVAL-CONST
@@ -16,3 +16,4 @@ rules:
   - CALC-DIFF-CONST
   - CALC-DIFF-CONST-MULSUM
   - CALC-INT-CONST-VAL
+  - CALC-BOUNDS-EVAL

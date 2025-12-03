@@ -36,13 +36,13 @@ def test_integration_power_rule(registry):
     
     match = registry.match(before, after, context_domains=["calculus"])
     assert match is not None
-    # CALC-INT-POW (150) should match because CALC-INT-POLY is now 140.
-    assert match.id == "CALC-INT-POW"
+    # CALC-INT-POWER (150) should match because CALC-INT-POLY is now 140.
+    assert match.id == "CALC-INT-POWER"
 
 def test_definite_integral_def(registry):
     """Test Definite Integral: Integral(x, (x, 0, 2)) -> ..."""
     before = "Integral(x, (x, 0, 2))"
-    # The rule CALC-INT-DEF transforms to Subs(...) - Subs(...)
+    # The rule CALC-DEF-INT transforms to Subs(...) - Subs(...)
     # But usually the user writes the result of that.
     # Wait, the rule matches (before -> after).
     # If the user step is:
@@ -54,7 +54,7 @@ def test_definite_integral_def(registry):
     # For f=x, Integral(x, x) = x^2/2
     # So expected after: Subs(x**2/2, x, 2) - Subs(x**2/2, x, 0)
     
-    # However, CALC-INT-DEF is a definition rule.
+    # However, CALC-DEF-INT is a definition rule.
     # It maps Integral(f, (x, a, b)) -> Subs(Integral(f, x), x, b) - ...
     # It doesn't evaluate the inner integral.
     
@@ -62,13 +62,13 @@ def test_definite_integral_def(registry):
     
     match = registry.match(before, expected_after, context_domains=["calculus"])
     assert match is not None
-    assert match.id == "CALC-INT-DEF"
+    assert match.id == "CALC-DEF-INT"
 
 def test_constant_multiple(registry):
     """Test Constant Multiple: Integral(3*x^2, x) -> 3 * Integral(x^2, x)"""
     # Wait, if CALC-INT-POLY exists, it might match Integral(3*x^2, x) DIRECTLY to result.
     # If the user step is "Integral(3*x^2, x) -> 3 * Integral(x^2, x)", 
-    # then CALC-INT-CONST (150) should match.
+    # then CALC-INT-LINEAR (150) should match.
     # But CALC-INT-POLY (160) matches "Integral(c*x^n, x)".
     # Does CALC-INT-POLY match the transformation to "3 * Integral..."? No.
     # CALC-INT-POLY transforms to "c * x**(n+1)...".
@@ -79,7 +79,7 @@ def test_constant_multiple(registry):
     
     match = registry.match(before, after, context_domains=["calculus"])
     assert match is not None
-    assert match.id == "CALC-INT-CONST"
+    assert match.id == "CALC-INT-LINEAR"
 
 def test_integration_poly(registry):
     """Test Combined Polynomial Rule: Integral(3*x^2, x) -> 3*x^3/3 = x^3"""
@@ -94,10 +94,10 @@ def test_integration_poly(registry):
     
     match = registry.match(before, after, context_domains=["calculus"])
     assert match is not None
-    # CALC-INT-CONST (150) matches Integral(c*f) and produces c*Integral(f).
+    # CALC-INT-LINEAR (150) matches Integral(c*f) and produces c*Integral(f).
     # Since c*Integral(f) is equiv to x^3, and CONST > POLY (140), CONST wins.
     # This is acceptable for now.
-    assert match.id in ["CALC-INT-POLY", "CALC-INT-CONST"]
+    assert match.id in ["CALC-INT-POLY", "CALC-INT-LINEAR"]
 
 def test_differentiation_power(registry):
     """Test Power Rule: Derivative(x^3, x) -> 3x^2"""

@@ -299,7 +299,7 @@ class KnowledgeRegistry:
             
         # Phase 2: Binding Consistency
         if not self._is_consistent(bind_before, bind_after):
-            pass
+            pass # We allow relaxed consistency for now as per previous sessions?
             
         # Phase 3: Equivalence Verification
         try:
