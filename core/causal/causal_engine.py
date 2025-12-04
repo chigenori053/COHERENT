@@ -19,13 +19,15 @@ from .causal_types import (
     CausalNode,
     CausalNodeType,
 )
+from ..decision_theory import DecisionEngine, DecisionConfig, DecisionAction
 
 
 class CausalEngine:
     """Consumes LearningLogger records and exposes causal reasoning helpers."""
 
-    def __init__(self) -> None:
+    def __init__(self, decision_config: DecisionConfig | None = None) -> None:
         self.graph = CausalGraph()
+        self.decision_engine = DecisionEngine(decision_config or DecisionConfig(strategy="balanced"))
         self.reset()
 
     # ------------------------------------------------------------------ #
@@ -88,6 +90,11 @@ class CausalEngine:
 
     def why_error(self, error_node_id: str) -> List[CausalNode]:
         """Trace potential causes for a given ERROR node."""
+        results = self._why_error_with_depth(error_node_id)
+        return [node for node, _ in results]
+
+    def _why_error_with_depth(self, error_node_id: str) -> List[tuple[CausalNode, int]]:
+        """Trace potential causes and return (node, depth)."""
         if error_node_id not in self.graph.nodes:
             return []
         ranked: List[tuple[int, int, CausalNode]] = []
@@ -105,18 +112,52 @@ class CausalEngine:
                 if parent_node.node_type in {CausalNodeType.STEP, CausalNodeType.RULE_APPLICATION}:
                     ranked.append((depth + 1, self._node_order.get(parent_id, -1), parent_node))
         ranked.sort(key=lambda item: (item[0], -item[1]))
-        return [node for _, _, node in ranked]
+        return [(node, depth) for depth, _, node in ranked]
+
+    def _calculate_cause_probability(self, node: CausalNode, distance: int) -> float:
+        """
+        Calculate heuristic probability that a node is the cause.
+        Distance is the graph distance from the error node.
+        """
+        # Distance starts at 1.
+        # 1 -> 0.8
+        # 2 -> 0.4
+        if distance <= 0:
+            return 0.0
+            
+        base_prob = 0.8 / distance
+        
+        # Boost probability for Rule Applications (often root causes)
+        if node.node_type == CausalNodeType.RULE_APPLICATION:
+            base_prob *= 1.2
+            
+        return min(1.0, base_prob)
 
     def suggest_fix_candidates(self, error_node_id: str, limit: int = 3) -> List[CausalNode]:
-        """Suggest intervention points for a given error."""
-        causes = self.why_error(error_node_id)
-        if not causes:
+        """Suggest intervention points for a given error using Decision Theory."""
+        # 1. Get raw candidates with depth
+        raw_candidates = self._why_error_with_depth(error_node_id)
+        
+        if not raw_candidates:
             return []
-        steps = [node for node in causes if node.node_type == CausalNodeType.STEP]
-        if steps:
-            steps.sort(key=self._step_priority)
-            return steps[:limit]
-        return causes[:limit]
+            
+        scored_candidates: List[tuple[float, CausalNode]] = []
+        
+        for node, depth in raw_candidates:
+            # 2. Estimate Probability using actual depth
+            prob = self._calculate_cause_probability(node, depth)
+            
+            # 3. Decision
+            action, utility, _ = self.decision_engine.decide(prob)
+            
+            # 4. Filter & Score
+            if action != DecisionAction.REJECT:
+                scored_candidates.append((utility, node))
+                
+        # 5. Sort by Utility (descending)
+        scored_candidates.sort(key=lambda x: x[0], reverse=True)
+        
+        return [node for _, node in scored_candidates[:limit]]
 
     def counterfactual_result(
         self,

@@ -76,6 +76,14 @@ class FuzzyJudge:
                 calculus_bonus = 0.3  # Boost score to likely acceptance
                 combined = min(1.0, combined + calculus_bonus)
                 calculus_reason = "Correct antiderivative (missing bounds?)"
+            else:
+                # Check for common mistakes
+                power_rule_error = self._check_power_rule_error(problem_expr["raw"], candidate_expr["raw"])
+                if power_rule_error:
+                    # We don't boost score significantly for mistakes, but we provide a reason.
+                    # Or maybe we boost slightly to "Analogous" (Review)?
+                    # Let's keep score low but add specific reason.
+                    calculus_reason = power_rule_error
 
         # --- Decision Theory Layer ---
         # We treat 'combined' as P(Match)
@@ -157,6 +165,57 @@ class FuzzyJudge:
                 "calculus_bonus": calculus_bonus
             },
         )
+
+    def _check_power_rule_error(self, problem_raw: str, candidate_raw: str) -> str | None:
+        """
+        Check for common power rule mistakes.
+        Returns a hint string if a mistake is detected, else None.
+        """
+        if not self.symbolic_engine:
+            return None
+            
+        try:
+            # Parse problem to find Integral
+            problem_sym = self.symbolic_engine.to_internal(problem_raw)
+            import sympy
+            integrals = problem_sym.atoms(sympy.Integral)
+            if not integrals:
+                return None
+            
+            target_integral = list(integrals)[0]
+            integrand = target_integral.function
+            limits = target_integral.limits
+            variable = limits[0][0] if limits else sympy.Symbol('x') # Default fallback
+            
+            # Check if integrand is polynomial-like (x^n)
+            # We can try to match x**n
+            # Or just check if candidate is x^(n+1) when it should be x^(n+1)/(n+1)
+            
+            # Calculate correct antiderivative
+            correct_antideriv = sympy.integrate(integrand, variable)
+            
+            candidate_sym = self.symbolic_engine.to_internal(candidate_raw)
+            
+            # Case 1: Missing Division
+            # candidate == correct * (n+1) ?
+            # Or candidate == diff(correct) * x ? No.
+            # If correct is x^3/3, candidate x^3 is correct * 3.
+            # So check if candidate / correct is a constant (the exponent).
+            
+            ratio = sympy.simplify(candidate_sym / correct_antideriv)
+            if ratio.is_constant() and ratio != 1:
+                # It's a constant multiple off.
+                # If ratio is > 1, likely missing division.
+                return f"Did you forget to divide by the new exponent? (Ratio: {ratio})"
+                
+            # Case 2: Forgot to integrate (candidate == integrand)
+            if sympy.simplify(candidate_sym - integrand) == 0:
+                return "You wrote the integrand but didn't integrate it."
+                
+            return None
+            
+        except Exception:
+            return None
 
     def _check_antiderivative(self, problem_raw: str, candidate_raw: str) -> bool:
         """

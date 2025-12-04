@@ -40,7 +40,7 @@
   pattern_before: "Integral(c * f, (x, a, b))"
   pattern_after: "c * Integral(f, (x, a, b))"
   description: "Constant Multiple Rule for Definite Integration"
-  priority: 150
+  priority: 160
   condition: "is_numeric(c) or (c.is_Symbol and c != x)"
 
 - id: CALC-INT-SUM

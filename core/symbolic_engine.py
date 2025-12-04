@@ -778,3 +778,44 @@ class SymbolicEngine:
             return "Other"
         except Exception:
             return None
+
+    def is_antiderivative(self, func_expr: str, integral_expr: str) -> bool:
+        """
+        Checks if func_expr is an antiderivative of the integrand in integral_expr.
+        integral_expr must be a Definite Integral string, e.g., "Integral(f(x), (x, a, b))".
+        """
+        if self._fallback is not None:
+            return False
+
+        try:
+            from sympy.parsing.sympy_parser import parse_expr
+            local_dict = {"e": _sympy.E, "pi": _sympy.pi, "integrate": _sympy.Integral, "Integral": _sympy.Integral}
+            
+            # Parse expressions
+            func = parse_expr(func_expr, local_dict=local_dict)
+            integral = parse_expr(integral_expr, local_dict=local_dict)
+            
+            if not isinstance(integral, _sympy.Integral):
+                return False
+                
+            # Extract integrand and variable
+            # Integral(f, (x, a, b)) -> args[0] is f, args[1] is (x, a, b)
+            integrand = integral.function
+            limits = integral.limits
+            
+            if not limits:
+                return False
+                
+            var = limits[0][0]
+            
+            # Differentiate the candidate function
+            deriv = _sympy.diff(func, var)
+            
+            # Check equivalence
+            # simplify(deriv - integrand) == 0
+            if _sympy.simplify(deriv - integrand) == 0:
+                return True
+                
+            return False
+        except Exception:
+            return False

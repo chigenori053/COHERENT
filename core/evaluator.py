@@ -110,6 +110,69 @@ class SymbolicEvaluationEngine(Engine):
         }
         if valid:
             self._current_expr = after
+        else:
+            # Check for "Pending Bounds" (Intermediate Indefinite Step)
+            # If problem is Definite Integral and step is Indefinite Integral (contains variables)
+            # and diff(step) == integrand, then it's a valid intermediate step.
+            try:
+                # 1. Is the problem a Definite Integral?
+                # We need to check the original problem expression, not just the current state.
+                # But self._current_expr tracks the *current* state.
+                # If we are in the middle of a calculation, _current_expr might already be partially evaluated.
+                # However, the user requirement implies checking against the *problem* context.
+                # For now, let's check if the *current* expression is a definite integral.
+                # Or, more robustly: check if 'after' is the antiderivative of 'before's integrand.
+                
+                # Heuristic:
+                # before: Integral(f, (x, a, b))  (Definite)
+                # after: F(x)                     (Indefinite)
+                # Check: diff(after, x) == f
+                
+                # We need access to symbolic engine's advanced methods.
+                # Let's assume symbolic_engine has a method or we use raw sympy if available.
+                # Since we are in SymbolicEvaluationEngine, we can use self.symbolic_engine.
+                
+                # This requires 'before' to be a definite integral.
+                # We can try to parse 'before' to see if it's a definite integral.
+                # But we don't have easy access to AST here.
+                # We can rely on string matching or symbolic engine helper.
+                
+                if "Integral" in before and ", (" in before: # Rough check for definite integral
+                     # Try to verify if 'after' is the antiderivative
+                     # We need to know the variable of integration.
+                     # Let's ask symbolic engine to check "is_antiderivative(after, before)"
+                     if hasattr(self.symbolic_engine, "is_antiderivative"):
+                         is_antideriv = self.symbolic_engine.is_antiderivative(after, before)
+                         if is_antideriv:
+                             valid = True
+                             # We don't update _current_expr because the value hasn't effectively changed 
+                             # towards the *numerical* goal, but it's a valid intermediate representation.
+                             # Wait, if we don't update, the next step will be compared against 'before' again.
+                             # But the user wrote 'after'. The next step will likely be [F(x)]_a^b or F(b)-F(a).
+                             # If we update _current_expr to 'after' (the function), 
+                             # then the next step (number) will be compared to 'after' (function) -> mismatch again.
+                             # This is the core issue: type mismatch (Function vs Number).
+                             
+                             # Solution: Mark as "partial" or "ok" but with a warning/hint.
+                             # And DO NOT update _current_expr?
+                             # If we don't update, the user must repeat the integral in the next step? No.
+                             # If the user writes:
+                             # 1. Int(x^2, 0, 1)
+                             # 2. x^3/3          <-- We accept this as "Pending Bounds"
+                             # 3. 1/3 - 0        <-- This should be compared against... what?
+                             # If we keep state as Int(x^2, 0, 1) (value 1/3), 
+                             # then 1/3 - 0 (value 1/3) is valid against Int(x^2, 0, 1).
+                             # So NOT updating _current_expr seems correct for the *value* chain.
+                             # But we need to tell the UI/User that step 2 was accepted.
+                             
+                             result["valid"] = True
+                             result["status"] = "partial" # Custom status if supported, else "ok"
+                             details["hint"] = "Indefinite integral is correct. Don't forget to apply the bounds!"
+                             details["reason"] = "pending_bounds"
+                             # We do NOT update self._current_expr
+            except Exception:
+                pass
+
         return result
 
     def finalize(self, expr: str | None) -> dict:
