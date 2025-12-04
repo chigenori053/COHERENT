@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 try:  # pragma: no cover - optional dependency
     import yaml
@@ -169,71 +169,47 @@ class KnowledgeRegistry:
             nodes.append(current)
         return nodes
 
-    def match(self, before: str, after: str, context_domains: List[str] | None = None) -> Optional[KnowledgeNode]:
+    def match(self, before: str, after: str, category: str | None = None) -> Optional[KnowledgeNode]:
         """
         Identifies the rule that transforms 'before' into 'after'.
-        Uses a RuleMap-based priority search, filtered/prioritized by context_domains.
+        Optimized by category filtering.
+        Returns the matching rule with the highest priority.
         """
         # Pre-check: Is the input expression numeric?
         is_before_numeric = self.engine.is_numeric(before)
         
-        # Determine maps to search
-        maps_to_search = []
+        # Determine allowed domains based on category
+        allowed_domains = self._resolve_domains(category)
         
-        if context_domains:
-            # 1. Prioritize maps matching the context domains
-            # We search maps whose ID (or name?) matches the domain.
-            # Map IDs: arithmetic, algebra_basic, algebra_advanced, calculus, etc.
-            # Context Domains: arithmetic, algebra, calculus
-            
-            # Strategy:
-            # - Iterate context_domains in order.
-            # - For each domain, find matching maps.
-            # - Add them to search list.
-            # - Then add remaining maps (as fallback)? Or strict filtering?
-            # User request implies "Mapped Symbolic Engine -> Mapped Calculation Rules".
-            # So we should probably prioritize context maps.
-            
-            seen_map_ids = set()
-            
-            for domain in context_domains:
-                # Find maps that belong to this domain
-                # We can check if map.id starts with domain or equals it.
-                # e.g. domain="algebra" matches "algebra_basic", "algebra_advanced"
-                
-                for m in self.maps:
-                    if m.id == domain or m.id.startswith(domain + "_"):
-                        if m.id not in seen_map_ids:
-                            maps_to_search.append(m)
-                            seen_map_ids.add(m.id)
-            
-            # Add remaining maps as fallback (optional, but good for safety)
-            # If we want strict mode, we might skip this.
-            # But "arithmetic" is often needed for "algebra".
-            # Our classifier adds "arithmetic" to "algebra" context, so it should be fine.
-            # Let's add remaining maps at the end just in case.
-            for m in self.maps:
-                if m.id not in seen_map_ids:
-                    maps_to_search.append(m)
-        else:
-            # Default: Search all maps in priority order
-            maps_to_search = self.maps
+        best_match: Optional[KnowledgeNode] = None
+
+        def check_node(node: KnowledgeNode):
+            nonlocal best_match
+            # Optimization: if we already have a match with strictly higher priority, 
+            # we can skip checking this node IF we assume we want the highest priority.
+            # But we need to be careful. If priorities are equal, first one wins?
+            # Let's just check priority after matching to be safe, or check before to save time.
+            if best_match and best_match.priority > node.priority:
+                return
+
+            # --- Filtering ---
+            if allowed_domains and node.domain not in allowed_domains:
+                return
+            # -----------------
+
+            match = self._match_node(node, before, after, is_before_numeric)
+            if match:
+                if best_match is None or match.priority > best_match.priority:
+                    best_match = match
 
         # 1. Search through Maps
-        for rule_map in maps_to_search:
+        for rule_map in self.maps:
             for rule_id in rule_map.rules:
                 node = self.rules_by_id.get(rule_id)
-                if not node:
-                    continue
-                
-                match = self._match_node(node, before, after, is_before_numeric)
-                if match:
-                    return match
+                if node:
+                    check_node(node)
 
-        # 2. Fallback: Search remaining rules (if any not in maps)
-        # For now, we can iterate all nodes again, but skip those we already checked?
-        # Or just iterate all nodes as a fallback with lower priority?
-        # To be safe and simple, let's iterate all nodes that were NOT in any map.
+        # 2. Fallback (Unmapped rules)
         mapped_ids = set()
         for m in self.maps:
             mapped_ids.update(m.rules)
@@ -241,11 +217,28 @@ class KnowledgeRegistry:
         for node in self.nodes:
             if node.id in mapped_ids:
                 continue
-            match = self._match_node(node, before, after, is_before_numeric)
-            if match:
-                return match
-                
-        return None
+            check_node(node)
+            
+        return best_match
+
+    def _resolve_domains(self, category: str | None) -> Set[str] | None:
+        """Returns the set of domains to search based on MathCategory."""
+        if not category:
+            return None
+            
+        # Always allow basic arithmetic and algebra
+        commons = {"universal", "arithmetic", "algebra"}
+        
+        if category == "geometry":
+            return commons | {"geometry"}
+        elif category == "calculus":
+            return commons | {"calculus", "analysis"}
+        elif category == "linear_algebra":
+            return commons | {"linear_algebra", "matrix"}
+        elif category == "statistics":
+            return commons | {"statistics", "probability"}
+        
+        return commons
 
     def _match_node(self, node: KnowledgeNode, before: str, after: str, is_before_numeric: bool) -> Optional[KnowledgeNode]:
         # Domain Strictness:

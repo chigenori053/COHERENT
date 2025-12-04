@@ -20,7 +20,7 @@ class StubKnowledgeRegistry:
             description="1+1=2",
         )
 
-    def match(self, before: str, after: str, context_domains: list[str] | None = None) -> Any:
+    def match(self, before: str, after: str, category: str | None = None) -> Any:
         if before.replace(" ", "") == "1+1" and after == "2":
             return self.node
         return None

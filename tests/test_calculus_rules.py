@@ -35,7 +35,7 @@ def test_integration_power_rule(registry):
     # Note: SymPy might format output differently, e.g. x**3/3
     after = "x**3 / 3" 
     
-    match = registry.match(before, after, context_domains=["calculus"])
+    match = registry.match(before, after, category="calculus")
     assert match is not None
     # CALC-INT-POWER (150) should match because CALC-INT-POLY is now 140.
     assert match.id == "CALC-INT-POWER"
@@ -61,7 +61,7 @@ def test_definite_integral_def(registry):
     
     expected_after = "Subs(Integral(x, x), x, 2) - Subs(Integral(x, x), x, 0)"
     
-    match = registry.match(before, expected_after, context_domains=["calculus"])
+    match = registry.match(before, expected_after, category="calculus")
     assert match is not None
     assert match.id == "CALC-DEF-INT"
 
@@ -78,7 +78,7 @@ def test_constant_multiple(registry):
     before = "Integral(3*x**2, x)"
     after = "3 * Integral(x**2, x)"
     
-    match = registry.match(before, after, context_domains=["calculus"])
+    match = registry.match(before, after, category="calculus")
     assert match is not None
     assert match.id == "CALC-INT-LINEAR"
 
@@ -93,7 +93,7 @@ def test_integration_poly(registry):
     # Note: match() checks if 'after' is equivalent to rule output.
     after = "x**3" 
     
-    match = registry.match(before, after, context_domains=["calculus"])
+    match = registry.match(before, after, category="calculus")
     assert match is not None
     # CALC-INT-LINEAR (150) matches Integral(c*f) and produces c*Integral(f).
     # Since c*Integral(f) is equiv to x^3, and CONST > POLY (140), CONST wins.
@@ -105,7 +105,7 @@ def test_differentiation_power(registry):
     before = "Derivative(x**3, x)"
     after = "3*x**2"
     
-    match = registry.match(before, after, context_domains=["calculus"])
+    match = registry.match(before, after, category="calculus")
     assert match is not None
     assert match.id == "CALC-DIFF-POW"
 
@@ -116,7 +116,7 @@ def test_differentiation_sum(registry):
     # Or 1 + 0 if evaluated?
     # The rule maps to Derivative(f, x) + Derivative(g, x)
     
-    match = registry.match(before, after, context_domains=["calculus"])
+    match = registry.match(before, after, category="calculus")
     assert match is not None
     assert match.id == "CALC-DIFF-SUM"
 
@@ -125,6 +125,6 @@ def test_differentiation_const(registry):
     before = "Derivative(5, x)"
     after = "0"
     
-    match = registry.match(before, after, context_domains=["calculus"])
+    match = registry.match(before, after, category="calculus")
     assert match is not None
     assert match.id == "CALC-DIFF-CONST"

@@ -37,7 +37,7 @@ class TestDomainClassification:
         
         # We can inspect the order of maps checked if we mock or debug, 
         # but here we can verify that it finds the rule.
-        match = self.registry.match("2 + 3", "5", context_domains=domains)
+        match = self.registry.match("2 + 3", "5", category="arithmetic")
         assert match is not None
         assert match.id == "ARITH-CALC-ADD"
         
@@ -45,7 +45,7 @@ class TestDomainClassification:
         # Should prioritize Algebra map
         expr = "x + x"
         domains = ["algebra", "arithmetic"]
-        match = self.registry.match("x + x", "2*x", context_domains=domains)
+        match = self.registry.match("x + x", "2*x", category="algebra")
         assert match is not None
         assert match.id == "ALG-OP-002"
 

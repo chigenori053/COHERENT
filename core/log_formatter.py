@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import List, Sequence
+from .renderers import ContentRenderer, RenderContext
 
 
 def format_record_label(record: dict) -> str:
@@ -39,8 +40,20 @@ def format_record_message(record: dict, *, include_meta: bool = True) -> List[st
     """Format a single record into one or more textual lines."""
 
     label = format_record_label(record)
-    expr = _expression_for(record)
-    base = f"{label}: {expr}".rstrip() if expr else f"{label}:"
+    
+    # Get category from metadata
+    meta = record.get("meta") or {}
+    category = meta.get("category", "algebra")
+    
+    # Render
+    ctx = RenderContext(
+        expression=_expression_for(record),
+        category=category,
+        metadata=meta
+    )
+    rendered_expr = ContentRenderer.render_step(ctx)
+    
+    base = f"{label}: {rendered_expr}".rstrip() if rendered_expr else f"{label}:"
     lines: List[str] = [base]
     if not include_meta:
         return lines

@@ -403,10 +403,20 @@ class CoreRuntime(Engine):
             result["details"]["evaluated"] = after
 
         if is_valid and self.knowledge_registry:
-            rule_node = self.knowledge_registry.match(before, after, context_domains=self._current_domains)
+            # Use detected category
+            current_cat = self._current_category.value if self._current_category else None
+            
+            rule_node = self.knowledge_registry.match(
+                before, 
+                after, 
+                category=current_cat
+            )
             if rule_node:
                 result["rule_id"] = rule_node.id
                 result["details"]["rule"] = rule_node.to_metadata()
+        
+        # Include category in result metadata (for rendering)
+        result["details"]["category"] = self._current_category.value
         
         if self._scenarios:
             result["details"]["scenarios"] = scenario_results

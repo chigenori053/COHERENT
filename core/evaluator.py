@@ -14,6 +14,7 @@ from .fuzzy.judge import FuzzyJudge
 from .fuzzy.judge import FuzzyJudge
 from .fuzzy.types import NormalizedExpr
 from .classifier import ExpressionClassifier
+from .category_analyzer import CategoryAnalyzer
 
 
 class Engine:
@@ -91,9 +92,9 @@ class SymbolicEvaluationEngine(Engine):
         rule_id: str | None = None
         rule_meta: dict[str, Any] | None = None
         if valid and self.knowledge_registry is not None:
-            # Classify the 'before' expression to determine context
-            domains = self.classifier.classify(before)
-            matched = self.knowledge_registry.match(before, after, context_domains=domains)
+            # Detect category for context
+            category = CategoryAnalyzer.detect(before)
+            matched = self.knowledge_registry.match(before, after, category=category.value)
             if matched:
                 rule_id = matched.id
                 rule_meta = matched.to_metadata()
