@@ -111,6 +111,17 @@ class SymbolicEvaluationEngine(Engine):
         if valid:
             self._current_expr = after
         else:
+            # Check for System Implication (Subset of solutions)
+            if self.symbolic_engine.is_system(before):
+                if self.symbolic_engine.check_implication(before, after):
+                    valid = True
+                    result["valid"] = True
+                    result["status"] = "ok" # or "implication"
+                    details["explanation"] = "Step is implied by the system."
+                    details["reason"] = "implication"
+                    # Do NOT update self._current_expr, so subsequent steps are checked against the System
+                    return result
+
             # Check for "Pending Bounds" (Intermediate Indefinite Step)
             # If problem is Definite Integral and step is Indefinite Integral (contains variables)
             # and diff(step) == integrand, then it's a valid intermediate step.

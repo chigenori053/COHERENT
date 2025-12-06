@@ -8,7 +8,7 @@ from fractions import Fraction
 from typing import Any, Dict, Sequence, Set
 
 from .errors import InvalidExprError, EvaluationError
-from .simple_algebra import SimpleAlgebra
+from .simple_algebra import SimpleAlgebra, _Polynomial
 
 import math
 
@@ -219,7 +219,15 @@ class SymbolicEngine:
         try:
             # Ensure 'e' is treated as Euler's number and 'pi' as pi
             # Map 'integrate' to 'Integral' to prevent eager evaluation (Late Evaluation Mode)
-            local_dict = {"e": _sympy.E, "pi": _sympy.pi, "integrate": _sympy.Integral, "Integral": _sympy.Integral, "Subs": _sympy.Subs}
+            local_dict = {
+                "e": _sympy.E, 
+                "pi": _sympy.pi, 
+                "integrate": _sympy.Integral, 
+                "Integral": _sympy.Integral, 
+                "Subs": _sympy.Subs,
+                "System": _sympy.FiniteSet, # Map System to FiniteSet
+                "Eq": _sympy.Eq
+            }
             return _sympy.sympify(expr, locals=local_dict)
         except Exception as exc:  # pragma: no cover - SymPy provides details.
             raise InvalidExprError(str(exc)) from exc
@@ -246,8 +254,9 @@ class SymbolicEngine:
             diff = _sympy.simplify(internal1 - internal2)
             if diff == 0:
                 return True
-        except (TypeError, ValueError) as exc:
-            raise EvaluationError(f"Failed to compare expressions: {exc}")
+        except (TypeError, ValueError, AttributeError, Exception):
+            # If subtraction fails (e.g. FiniteSet - Equality), they are not equivalent in the standard sense.
+            return False
         return self._numeric_sampling_equiv(expr1, expr2)
     
     def is_subexpression(self, sub_expr: str, full_expr: str) -> bool:
@@ -819,3 +828,59 @@ class SymbolicEngine:
             return False
         except Exception:
             return False
+
+    def is_system(self, expr: str) -> bool:
+        """Check if the expression represents a system of equations."""
+        try:
+            internal = self.to_internal(expr)
+            
+            if self._fallback is not None:
+                # Fallback: internal is py_ast.AST (Expression)
+                if isinstance(internal, py_ast.Expression):
+                    body = internal.body
+                    if isinstance(body, py_ast.Call) and isinstance(body.func, py_ast.Name):
+                        return body.func.id == "System"
+                return False
+                
+            return isinstance(internal, _sympy.FiniteSet)
+        except Exception:
+            return False
+
+    def solve_system(self, expr: str) -> Any:
+        """Solve a system of equations."""
+        # Try strategies
+        for category in self.active_categories:
+            strategy = self.strategies.get(category)
+            if strategy and hasattr(strategy, 'solve_system'):
+                result = strategy.solve_system(expr, self)
+                if result is not None:
+                    return result
+        
+        # Also try LinearAlgebraStrategy explicitly if not active
+        from .math_category import MathCategory
+        if MathCategory.LINEAR_ALGEBRA not in self.active_categories:
+             strategy = self.strategies.get(MathCategory.LINEAR_ALGEBRA)
+             if strategy and hasattr(strategy, 'solve_system'):
+                 result = strategy.solve_system(expr, self)
+                 if result is not None:
+                     return result
+        return None
+
+    def check_implication(self, system_expr: str, step_expr: str) -> bool:
+        """Check if system_expr implies step_expr (solutions of system satisfy step)."""
+        # Try strategies
+        for category in self.active_categories:
+            strategy = self.strategies.get(category)
+            if strategy and hasattr(strategy, 'check_implication'):
+                if strategy.check_implication(system_expr, step_expr, self):
+                    return True
+        
+        # Try LinearAlgebra explicitly
+        from .math_category import MathCategory
+        if MathCategory.LINEAR_ALGEBRA not in self.active_categories:
+             strategy = self.strategies.get(MathCategory.LINEAR_ALGEBRA)
+             if strategy and hasattr(strategy, 'check_implication'):
+                 if strategy.check_implication(system_expr, step_expr, self):
+                     return True
+                     
+        return False

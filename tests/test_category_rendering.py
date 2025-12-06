@@ -20,7 +20,7 @@ class TestCategoryRendering:
             category="calculus",
             metadata={}
         )
-        assert ContentRenderer.render_step(ctx) == "d/dx(x**2,  x)" # Simple replacement logic (note extra space)
+        assert ContentRenderer.render_step(ctx) == r"\frac{d}{dx}(x**2, x)" # Improved LaTeX rendering
 
     def test_render_geometry(self):
         ctx = RenderContext(

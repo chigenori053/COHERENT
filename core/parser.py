@@ -46,20 +46,71 @@ class Parser:
                 continue
             keyword, tail, rest, has_colon = self._extract_keyword_parts(stripped)
             if keyword == "problem" and has_colon:
-                nodes.append(self._parse_problem(rest.strip(), parsed.number))
-                index += 1
+                content = rest.strip()
+                if not content:
+                    block_lines, index = self._collect_block(index + 1)
+                    nodes.append(self._parse_problem_block(block_lines, parsed.number))
+                else:
+                    nodes.append(self._parse_problem(content, parsed.number))
+                    index += 1
                 problem_seen = True
-            elif keyword == "step" and has_colon and rest.strip():
-                nodes.append(self._parse_step_legacy(rest.strip(), tail or None, parsed.number))
-                index += 1
-                step_seen = True
             elif keyword == "step" and has_colon:
-                block_lines, index = self._collect_block(index + 1)
-                nodes.append(self._parse_step_block(block_lines, parsed.number))
+                content = rest.strip()
+                current_indent = len(raw) - len(raw.lstrip(" "))
+                
+                # Check for following block regardless of inline content
+                next_line_idx = index + 1
+                is_block = False
+                if next_line_idx < len(self._lines):
+                    next_line = self._lines[next_line_idx].content
+                    next_indent = len(next_line) - len(next_line.lstrip(" "))
+                    if next_line.strip() and next_indent > current_indent:
+                        is_block = True
+                
+                if is_block:
+                     block_lines, index = self._collect_block(next_line_idx)
+                     if content:
+                         block_lines.insert(0, content)
+                     
+                     if self._is_mapping_block(block_lines):
+                        nodes.append(self._parse_step_block(block_lines, parsed.number))
+                     else:
+                        nodes.append(self._parse_step_multiline(block_lines, parsed.number))
+                elif not content:
+                    # No inline content and no block -> empty step? Or maybe block starts with empty line?
+                    # _collect_block handles empty lines if they are indented or if we are strict.
+                    # But here we already checked next line indentation.
+                    # If not content and not indented block, it's an error or empty block.
+                    # Let's try collecting block anyway to be safe (e.g. if next line is empty but line after is indented? _collect_block stops at empty line usually)
+                    # But we must be careful not to consume sibling steps.
+                    # If next line is not indented deeper, we shouldn't consume it.
+                    nodes.append(self._parse_step_legacy("", None, parsed.number))
+                    index += 1
+                else:
+                    nodes.append(self._parse_step_legacy(content, tail or None, parsed.number))
+                    index += 1
                 step_seen = True
+
+
             elif keyword == "end" and has_colon:
-                nodes.append(self._parse_end(rest.strip(), parsed.number))
-                index += 1
+                content = rest.strip()
+                if not content:
+                     # Check if there is a block (e.g. multi-line end condition?)
+                     # For now, end usually is single line or 'done'.
+                     # But if user writes:
+                     # end:
+                     #  x = 3
+                     #  y = 7
+                     # We should support it.
+                     block_lines, index = self._collect_block(index + 1)
+                     if block_lines:
+                         nodes.append(self._parse_end_block(block_lines, parsed.number))
+                     else:
+                         # Just 'end:' with nothing? Assume done?
+                         nodes.append(self._parse_end("done", parsed.number))
+                else:
+                    nodes.append(self._parse_end(content, parsed.number))
+                    index += 1
             elif keyword == "explain" and has_colon:
                 nodes.append(self._parse_explain(rest.strip(), parsed.number))
                 index += 1
@@ -182,6 +233,10 @@ class Parser:
                 content = rhs
 
         expr = self._normalize_expr(content)
+        # If content still has '=', it's an equation, not an assignment
+        if "=" in expr:
+             expr = self._to_equation(expr)
+             
         if not expr:
             raise SyntaxError(f"Problem expression required on line {number}.")
         return ast.ProblemNode(expr=expr, name=name, line=number)
@@ -199,6 +254,9 @@ class Parser:
                 content = rhs
         
         expr = self._normalize_expr(content)
+        if "=" in expr:
+             expr = self._to_equation(expr)
+
         if not expr:
             raise SyntaxError(f"Sub-problem expression required on line {number}.")
         return ast.SubProblemNode(expr=expr, raw_expr=raw_expr, target_variable=target_variable, line=number)
@@ -210,6 +268,9 @@ class Parser:
 
         raw = content.strip()
         expr = self._normalize_expr(content)
+        if "=" in expr:
+             expr = self._to_equation(expr)
+
         if not expr:
             raise SyntaxError(f"Step expression required on line {number}.")
         return ast.StepNode(step_id=step_id, expr=expr, raw_expr=raw, line=number)
@@ -397,3 +458,79 @@ class Parser:
 
     def _looks_like_directive(self, value: str) -> bool:
         return bool(re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*\([^()]*\)", value))
+
+    def _is_mapping_block(self, block_lines: List[str]) -> bool:
+        """Check if a block looks like a key-value mapping (e.g. before: ..., after: ...)."""
+        for line in block_lines:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            if ":" in stripped:
+                key, _ = stripped.split(":", 1)
+                if key.strip() in {"before", "after", "note", "rule", "id"}:
+                    return True
+        return False
+
+    def _to_equation(self, expr: str) -> str:
+        assignment = self._split_top_level_assignment(expr)
+        if assignment:
+            lhs, rhs = assignment
+            return f"Eq({lhs.strip()}, {rhs.strip()})"
+        return expr
+
+    def _parse_problem_block(self, block_lines: List[str], number: int) -> ast.ProblemNode:
+        # Join lines into a System(...) expression
+        exprs = []
+        for line in block_lines:
+            stripped = line.strip()
+            if stripped and not stripped.startswith("#"):
+                norm = self._normalize_expr(stripped)
+                exprs.append(self._to_equation(norm))
+        
+        if not exprs:
+            raise SyntaxError(f"Problem block is empty on line {number}.")
+            
+        if len(exprs) == 1:
+            return ast.ProblemNode(expr=exprs[0], line=number)
+            
+        # Create a System expression
+        system_expr = f"System({', '.join(exprs)})"
+        return ast.ProblemNode(expr=system_expr, line=number)
+
+    def _parse_step_multiline(self, block_lines: List[str], number: int) -> ast.StepNode:
+        exprs = []
+        raw_lines = []
+        for line in block_lines:
+            stripped = line.strip()
+            if stripped and not stripped.startswith("#"):
+                norm = self._normalize_expr(stripped)
+                exprs.append(self._to_equation(norm))
+                raw_lines.append(stripped)
+        
+        if not exprs:
+            raise SyntaxError(f"Step block is empty on line {number}.")
+            
+        if len(exprs) == 1:
+            return ast.StepNode(expr=exprs[0], raw_expr=raw_lines[0], line=number)
+            
+        system_expr = f"System({', '.join(exprs)})"
+        raw_expr = "\n".join(raw_lines)
+        return ast.StepNode(expr=system_expr, raw_expr=raw_expr, line=number)
+
+    def _parse_end_block(self, block_lines: List[str], number: int) -> ast.EndNode:
+        exprs = []
+        for line in block_lines:
+            stripped = line.strip()
+            if stripped and not stripped.startswith("#"):
+                norm = self._normalize_expr(stripped)
+                exprs.append(self._to_equation(norm))
+        
+        if not exprs:
+            # Empty block -> done?
+            return ast.EndNode(expr=None, is_done=True, line=number)
+            
+        if len(exprs) == 1:
+            return ast.EndNode(expr=exprs[0], is_done=False, line=number)
+            
+        system_expr = f"System({', '.join(exprs)})"
+        return ast.EndNode(expr=system_expr, is_done=False, line=number)

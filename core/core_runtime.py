@@ -20,6 +20,7 @@ from .linear_algebra_engine import LinearAlgebraEngine
 from .classifier import ExpressionClassifier
 from .category_identifier import CategoryIdentifier
 from .math_category import MathCategory
+from .renderers import RenderingEngine
 from core.errors import CausalScriptError, InvalidExprError, MissingProblemError
 
 _EQUATION_SAMPLE_ASSIGNMENTS = [
@@ -96,20 +97,65 @@ class CoreRuntime(Engine):
         self._context: Dict[str, Any] = {}
         self._scenarios: Dict[str, Dict[str, Any]] = {}
         self._equation_mode: bool = False
+        
+        # Initialize Rendering Engine
+        self.rendering_engine = RenderingEngine(computation_engine.symbolic_engine)
 
     def _normalize_expression(self, expr: str) -> str:
         """
         Convert optional equation syntax (left = right) into an expression form.
         """
         expr = expr.strip()
-        if "=" not in expr:
+        equation = self._extract_equation_sides(expr)
+        if not equation:
             return expr
-        left, _, right = expr.partition("=")
-        left = left.strip()
-        right = right.strip()
-        if not left or not right:
-            raise ValueError("Invalid equation format. Expected 'left = right'.")
+        left, right = equation
         return f"({left}) - ({right})"
+
+    def _extract_equation_sides(self, expr: str) -> tuple[str, str] | None:
+        """
+        Return (lhs, rhs) if the expression represents an equation, either via
+        explicit '=' or SymPy's Eq(...).
+        """
+        stripped = expr.strip()
+        if "=" in stripped:
+            left, _, right = stripped.partition("=")
+            left = left.strip()
+            right = right.strip()
+            if left and right:
+                return left, right
+            return None
+
+        if stripped.startswith("Eq(") and stripped.endswith(")"):
+            inner = stripped[3:-1]
+            parts: list[str] = []
+            buffer: list[str] = []
+            depth = 0
+            for ch in inner:
+                if ch in "([{":
+                    depth += 1
+                elif ch in ")]}":
+                    depth = max(depth - 1, 0)
+                if ch == "," and depth == 0:
+                    parts.append("".join(buffer).strip())
+                    buffer = []
+                    continue
+                buffer.append(ch)
+            if buffer:
+                parts.append("".join(buffer).strip())
+            if len(parts) == 2 and parts[0] and parts[1]:
+                return parts[0], parts[1]
+
+        try:
+            from sympy import Eq  # type: ignore
+
+            internal = self.computation_engine.symbolic_engine.to_internal(stripped)
+            if isinstance(internal, Eq):
+                return str(internal.lhs), str(internal.rhs)
+        except Exception:
+            return None
+
+        return None
 
     def _expressions_equivalent_up_to_scalar(self, expr1: str, expr2: str) -> bool:
         sym = self.computation_engine.symbolic_engine
@@ -263,6 +309,11 @@ class CoreRuntime(Engine):
             raise MissingProblemError("Problem expression must be set before steps.")
             
         before = self._current_expr
+        equation = self._extract_equation_sides(expr)
+        lhs = rhs = None
+        if equation:
+            lhs, rhs = equation
+        self._equation_mode = bool(equation)
         after = self._normalize_expression(expr)
         # Default validation (symbolic)
         # Apply context if variables are bound
@@ -279,19 +330,14 @@ class CoreRuntime(Engine):
             
         is_valid_symbolic = False
 
-        if "=" in expr:
+        if equation:
             self._equation_mode = True
             # Check for "LHS = RHS" where LHS is equivalent to Before
-            lhs, _, rhs = expr.partition("=")
-            lhs = lhs.strip()
-            rhs = rhs.strip()
-            
-            # Check if LHS == Before
-            # We need to apply context if needed
+            # Apply context if needed
             if self._context:
                 try:
-                    lhs_eval = self.computation_engine.substitute(lhs, self._context)
-                    rhs_eval = self.computation_engine.substitute(rhs, self._context)
+                    lhs_eval = self.computation_engine.substitute(lhs, self._context) if lhs is not None else None
+                    rhs_eval = self.computation_engine.substitute(rhs, self._context) if rhs is not None else None
                 except CausalScriptError:
                     lhs_eval = lhs
                     rhs_eval = rhs
@@ -299,11 +345,13 @@ class CoreRuntime(Engine):
                 lhs_eval = lhs
                 rhs_eval = rhs
 
-            is_lhs_equiv = self.computation_engine.symbolic_engine.is_equiv(before_eval, lhs_eval)
+            is_lhs_equiv = False
+            if lhs is not None:
+                is_lhs_equiv = self.computation_engine.symbolic_engine.is_equiv(before_eval, lhs_eval)
             # We do NOT use scalar equivalence here. LHS must be strictly equivalent to Before
             # to justify replacing Before with RHS as the new state.
             
-            if is_lhs_equiv:
+            if is_lhs_equiv and rhs is not None:
                 # Check if LHS == RHS
                 is_eqn_valid = self.computation_engine.symbolic_engine.is_equiv(lhs_eval, rhs_eval)
                 if not is_eqn_valid and self._equation_mode:
@@ -338,21 +386,17 @@ class CoreRuntime(Engine):
         # Partial Calculation Logic
         is_partial = False
         is_partial_attempt = False
-        if not is_valid and "=" in expr:
+        if not is_valid and equation:
             # Check if this is a valid partial calculation
             # 1. It must be a valid equation itself (LHS == RHS)
-            lhs, _, rhs = expr.partition("=")
-            lhs = lhs.strip()
-            rhs = rhs.strip()
-            
-            # Evaluate LHS and RHS to check equality
+            #    (e.g., extracting part of the expression and simplifying it)
             try:
-                lhs_in_before = self.computation_engine.symbolic_engine.is_subexpression(lhs, before)
+                lhs_in_before = self.computation_engine.symbolic_engine.is_subexpression(lhs, before) if lhs is not None else False
             except Exception:
                 lhs_in_before = False
 
             try:
-                lhs_rhs_equiv = self.computation_engine.symbolic_engine.is_equiv(lhs, rhs)
+                lhs_rhs_equiv = self.computation_engine.symbolic_engine.is_equiv(lhs, rhs) if lhs is not None and rhs is not None else False
             except Exception:
                 lhs_rhs_equiv = False
 
@@ -456,6 +500,9 @@ class CoreRuntime(Engine):
                 "details": hint.details
             }
             
+        # Render the result for display
+        self.rendering_engine.render_result(result)
+        
         print(f"DEBUG: Step '{expr}' -> Valid: {is_valid}, Partial: {is_partial}, Before: '{before}', After: '{after}'")
         return result
 
@@ -664,6 +711,9 @@ class CoreRuntime(Engine):
                     "type": hint.hint_type
                 }
                 
+
+            
+            self.rendering_engine.render_result(result)
             return result
             
         else:
@@ -684,18 +734,22 @@ class CoreRuntime(Engine):
             if expr is not None:
                 normalized_expr = self._normalize_expression(expr)
                 is_valid = self.computation_engine.symbolic_engine.is_equiv(self._current_expr, normalized_expr)
-                return {
+                result = {
                     "before": self._current_expr,
                     "after": normalized_expr,
                     "valid": is_valid,
                     "rule_id": None,
                     "details": {}
                 }
+                self.rendering_engine.render_result(result)
+                return result
             else:
-                return {
+                result = {
                     "before": self._current_expr,
                     "after": self._current_expr,
                     "valid": True,
                     "rule_id": None,
                     "details": {}
                 }
+                self.rendering_engine.render_result(result)
+                return result

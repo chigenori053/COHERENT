@@ -162,7 +162,7 @@ class CalculusStrategy(SymbolicStrategy):
 
 class LinearAlgebraStrategy(SymbolicStrategy):
     """Strategy for linear algebra."""
-    # Placeholder for now, can be expanded
+    
     def is_equiv(self, expr1: str, expr2: str, engine: Any) -> Optional[bool]:
         return None
 
@@ -171,6 +171,181 @@ class LinearAlgebraStrategy(SymbolicStrategy):
 
     def to_latex(self, expr: str, engine: Any) -> Optional[str]:
         return None
+
+    def solve_system(self, expr: str, engine: Any) -> Any:
+        """Solve a system of equations."""
+        try:
+            internal = engine.to_internal(expr)
+            
+            if self._fallback is not None:
+                # Fallback implementation using LinearAlgebraEngine
+                # We need to import here to avoid circular imports if any, 
+                # but LinearAlgebraEngine is in core.linear_algebra_engine
+                from .linear_algebra_engine import LinearAlgebraEngine
+                from .simple_algebra import _Polynomial
+                import ast as py_ast
+                
+                la_engine = LinearAlgebraEngine()
+                
+                # Extract equations from AST
+                if not (isinstance(internal, py_ast.Expression) and 
+                        isinstance(internal.body, py_ast.Call) and 
+                        isinstance(internal.body.func, py_ast.Name) and 
+                        internal.body.func.id == "System"):
+                    return None
+                
+                equations = []
+                variables = set()
+                
+                for arg in internal.body.args:
+                    # Expect Eq(lhs, rhs)
+                    if not (isinstance(arg, py_ast.Call) and 
+                            isinstance(arg.func, py_ast.Name) and 
+                            arg.func.id == "Eq"):
+                        continue
+                    
+                    # Convert AST back to string for SimpleAlgebra
+                    try:
+                        lhs_str = py_ast.unparse(arg.args[0])
+                        rhs_str = py_ast.unparse(arg.args[1])
+                    except AttributeError:
+                        return None
+                        
+                    eq_expr = f"{lhs_str} - ({rhs_str})"
+                    poly = _Polynomial.from_expr(eq_expr)
+                    
+                    # Check linearity
+                    for key in poly.terms:
+                        degree = sum(power for _, power in key)
+                        if degree > 1:
+                            return None # Non-linear
+                    
+                    equations.append(poly)
+                    variables.update(poly.variables())
+                
+                sorted_vars = sorted(list(variables))
+                if not sorted_vars:
+                    return None
+                    
+                # Build matrix
+                matrix = []
+                constants = []
+                
+                for poly in equations:
+                    row = []
+                    for var in sorted_vars:
+                        coeff = poly.coefficient(((var, 1),))
+                        row.append(float(coeff))
+                    
+                    # Constant term is on LHS, so move to RHS -> -constant
+                    const_val = poly.coefficient(())
+                    constants.append(float(-const_val))
+                    matrix.append(row)
+                
+                try:
+                    solution_vals = la_engine.solve_linear_system(matrix, constants)
+                    solution = {var: val for var, val in zip(sorted_vars, solution_vals)}
+                    return [solution] # Return list of dicts
+                except Exception:
+                    return None
+
+            # SymPy implementation
+            if isinstance(internal, _sympy.FiniteSet):
+                system_args = list(internal)
+            else:
+                system_args = internal
+                
+            solutions = _sympy.solve(system_args)
+            return solutions
+        except Exception:
+            return None
+
+    def check_implication(self, system_expr: str, step_expr: str, engine: Any) -> bool:
+        """Check if system_expr implies step_expr."""
+        try:
+            # 1. Solve system
+            solutions = self.solve_system(system_expr, engine)
+            
+            if not solutions:
+                return False 
+            
+            # Standardize solutions to a list of dicts
+            if isinstance(solutions, dict):
+                solutions = [solutions]
+            elif isinstance(solutions, list):
+                pass
+            else:
+                return False
+
+            # 2. Check step
+            if self._fallback is not None:
+                from .simple_algebra import _Polynomial
+                import ast as py_ast
+                
+                # Fallback check
+                step_internal = engine.to_internal(step_expr)
+                
+                step_equations = []
+                if isinstance(step_internal, py_ast.Expression):
+                    body = step_internal.body
+                    if isinstance(body, py_ast.Call) and isinstance(body.func, py_ast.Name):
+                        if body.func.id == "Eq":
+                            step_equations.append(step_internal)
+                        elif body.func.id == "System":
+                            # Extract equations from System
+                            for arg in body.args:
+                                if isinstance(arg, py_ast.Call) and isinstance(arg.func, py_ast.Name) and arg.func.id == "Eq":
+                                    step_equations.append(arg)
+                
+                if not step_equations:
+                    return False
+                
+                for eq_node in step_equations:
+                    # Handle both Expression(body=Call) and Call
+                    if isinstance(eq_node, py_ast.Expression):
+                        call_node = eq_node.body
+                    else:
+                        call_node = eq_node
+                        
+                    lhs_str = py_ast.unparse(call_node.args[0])
+                    rhs_str = py_ast.unparse(call_node.args[1])
+                    eq_expr = f"{lhs_str} - ({rhs_str})"
+                    poly = _Polynomial.from_expr(eq_expr)
+                    
+                    for sol in solutions:
+                        # Substitute
+                        val = poly.substitute(sol)
+                        const_val = val.coefficient(())
+                        if abs(float(const_val)) > 1e-9:
+                            return False
+                return True
+
+            # SymPy check
+            step_internal = engine.to_internal(step_expr)
+            
+            # Handle System step in SymPy
+            if isinstance(step_internal, _sympy.FiniteSet):
+                step_exprs = list(step_internal)
+            else:
+                step_exprs = [step_internal]
+            
+            for expr in step_exprs:
+                for sol in solutions:
+                    check = expr.subs(sol)
+                    if hasattr(check, 'simplify'):
+                        check = check.simplify()
+                    
+                    if check is True or check == True:
+                        continue
+                    if isinstance(check, _sympy.Eq):
+                        if check.lhs == check.rhs:
+                            continue
+                    
+                    return False
+                
+            return True
+        except Exception:
+            return False
 
 
 class StatisticsStrategy(SymbolicStrategy):
