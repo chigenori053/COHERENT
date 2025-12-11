@@ -141,23 +141,66 @@ class CausalEngine:
         if not raw_candidates:
             return []
             
-        scored_candidates: List[tuple[float, CausalNode]] = []
+        # Lazy initialization of heuristics components
+        if not hasattr(self, "_misuse_detector"):
+             from ..heuristics import MisusePatternDetector
+             from ..symbolic_engine import SymbolicEngine
+             # We need a symbolic engine instance. We can build a fresh one or store one.
+             # Ideally we share one, but CausalEngine doesn't persist one currently.
+             # _build_evaluation_engine creates one, let's allow reuse.
+             sym = SymbolicEngine()
+             self._misuse_detector = MisusePatternDetector(sym)
+
+        scored_candidates: List[tuple[float, CausalNode, Dict[str, Any]]] = []
         
         for node, depth in raw_candidates:
             # 2. Estimate Probability using actual depth
             prob = self._calculate_cause_probability(node, depth)
             
+            # 2b. Heuristic Intensification: Check for Misuse Patterns
+            misuse_info = {}
+            if node.node_type == CausalNodeType.STEP:
+                # Find previous step/problem to get 'before' expression
+                before_expr = self._get_before_expr(node.node_id)
+                current_expr = node.payload.get("record", {}).get("expression")
+                
+                if before_expr and current_expr:
+                    misuse_name = self._misuse_detector.detect_misuse(before_expr, current_expr)
+                    if misuse_name:
+                        # Significant probability boost for detected misuse
+                        prob = max(prob, 0.95)
+                        misuse_info = {"misuse_detected": misuse_name}
+
             # 3. Decision
             action, utility, _ = self.decision_engine.decide(prob)
             
             # 4. Filter & Score
             if action != DecisionAction.REJECT:
-                scored_candidates.append((utility, node))
+                # Store extra info if needed (e.g. for explanation)
+                # But return type is List[CausalNode], so we can't easily return metadata 
+                # unless we attach it to the node or trust the caller doesn't need it yet.
+                # Use a temporary attribute or just rely on the boosting.
+                if misuse_info:
+                    # In a real system, we might want to attach this to a result object.
+                    # For now, we just let it influence the ranking.
+                    pass
+                scored_candidates.append((utility, node, misuse_info))
                 
         # 5. Sort by Utility (descending)
         scored_candidates.sort(key=lambda x: x[0], reverse=True)
         
-        return [node for _, node in scored_candidates[:limit]]
+        # Return nodes (limit applied)
+        return [node for _, node, _ in scored_candidates[:limit]]
+
+    def _get_before_expr(self, node_id: str) -> Optional[str]:
+        """Retrieve the expression of the node immediately preceding this one in the flow."""
+        in_edges = self.graph.in_edges.get(node_id, [])
+        for edge in in_edges:
+            if edge.edge_type == CausalEdgeType.STEP_TRANSITION:
+                parent = self.graph.nodes.get(edge.source_id)
+                if parent and parent.payload.get("record"):
+                    return parent.payload["record"].get("expression")
+        return None
 
     def counterfactual_result(
         self,

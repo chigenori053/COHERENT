@@ -228,6 +228,8 @@ class SymbolicEngine:
                 "System": _sympy.FiniteSet, # Map System to FiniteSet
                 "Eq": _sympy.Eq
             }
+            # Normalize power symbol
+            expr = expr.replace("^", "**")
             return _sympy.sympify(expr, locals=local_dict)
         except Exception as exc:  # pragma: no cover - SymPy provides details.
             raise InvalidExprError(str(exc)) from exc
@@ -620,6 +622,9 @@ class SymbolicEngine:
             # But SymPy parses (x-y)*(x-y) as (x-y)**2 automatically even with evaluate=False?
             # No, evaluate=False should preserve it.
             # Let's try parsing with evaluate=False.
+            # Normalize power symbol
+            expression = expression.replace("^", "**")
+            pattern = pattern.replace("^", "**")
             expr_internal = parse_expr(expression, evaluate=False, local_dict=local_dict)
             
             # 2. Prepare the pattern with Wild symbols
