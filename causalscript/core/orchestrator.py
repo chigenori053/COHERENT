@@ -24,8 +24,9 @@ class CoreOrchestrator:
         # Registry mapping Mode Name -> Module Package Path
         self._module_registry = {
             "Arithmetic": "causalscript.core.modules.arithmetic",
+            "Calculus": "causalscript.core.modules.calculus",
+            "Geometry": "causalscript.core.modules.geometry",
             # "Algebra": "causalscript.core.modules.algebra", # To be implemented
-            # "Calculus": "causalscript.core.modules.calculus", # To be implemented
         }
 
     def set_mode(self, mode: str):

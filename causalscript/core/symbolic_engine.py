@@ -54,7 +54,19 @@ class _FallbackEvaluator:
             raise InvalidExprError(str(exc)) from exc
         return tree
 
-    def evaluate(self, expr: str, values: Dict[str, Any]) -> Any:
+    def evaluate(self, expr: str | py_ast.AST, values: Dict[str, Any]) -> Any:
+        if isinstance(expr, py_ast.AST):
+             tree = expr
+             # If it's a Module/Expression wrapper, get body
+             if isinstance(tree, py_ast.Expression):
+                 return self._eval_node(tree.body, values)
+             if isinstance(tree, py_ast.Module):
+                 # Assume single expression or last? Usually Module.body is list
+                 # Fallback parser uses mode='eval' -> Expression
+                 pass
+             # Otherwise assume it's a node
+             return self._eval_node(tree, values)
+             
         tree = self.parse(expr)
         return self._eval_node(tree.body, values)
 
@@ -278,9 +290,20 @@ class SymbolicEngine:
         except Exception:
             return False
 
-    def to_internal(self, expr: str) -> Any:
+    def to_internal(self, expr: Any) -> Any:
+        # If it's already an internal type (SymPy object or AST), return it.
         if self._fallback is not None:
-            return self._fallback.parse(expr)
+             if isinstance(expr, (py_ast.AST, list)): # list for matrix AST?
+                 return expr
+             if not isinstance(expr, str):
+                 return expr # Assume it's a number or compatible type
+             return self._fallback.parse(expr)
+        
+        # If we have SymPy
+        if not isinstance(expr, str):
+            # Assume it's already a SymPy object or compatible (int, float)
+            return expr
+
         try:
             # Ensure 'e' is treated as Euler's number and 'pi' as pi
             # Map 'integrate' to 'Integral' to prevent eager evaluation (Late Evaluation Mode)
@@ -534,7 +557,7 @@ class SymbolicEngine:
         except Exception:
             return expr
 
-    def evaluate(self, expr: str, context: Dict[str, Any]) -> Any:
+    def evaluate(self, expr: Any, context: Dict[str, Any]) -> Any:
         print(f"DEBUG: evaluate called for {expr} with context {context}, fallback={self._fallback}")
         if self._fallback is not None:
             symbols = self._fallback.symbols(expr)
