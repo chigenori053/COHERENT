@@ -619,7 +619,7 @@ class Parser:
             raise SyntaxError(f"Step block is empty on line {number}.")
             
         if len(exprs) == 1:
-            return ast.StepNode(expr=exprs[0], raw_expr=raw_lines[0] if raw_lines else "", line=number)
+            return ast.StepNode(expr=exprs[0], raw_expr="\n".join(raw_lines) if raw_lines else "", line=number)
             
         system_expr = f"System({', '.join(exprs)})"
         raw_expr = "\n".join(raw_lines)

@@ -15,7 +15,7 @@ class ReasoningAgent:
     Loops through Generate -> Simulate -> Evaluate to find the best next step.
     """
 
-    def __init__(self, runtime: CoreRuntime):
+    def __init__(self, runtime: CoreRuntime, tensor_engine=None, tensor_converter=None):
         self.runtime = runtime
         if not self.runtime.knowledge_registry:
             raise ValueError("ReasoningAgent requires a KnowledgeRegistry")
@@ -23,7 +23,12 @@ class ReasoningAgent:
         self.registry = self.runtime.knowledge_registry
         self.symbolic_engine = self.runtime.computation_engine.symbolic_engine
         
-        self.generator = HypothesisGenerator(self.registry, self.symbolic_engine)
+        self.generator = HypothesisGenerator(
+            self.registry, 
+            self.symbolic_engine,
+            tensor_engine=tensor_engine,
+            tensor_converter=tensor_converter
+        )
         self.goal_scanner = GoalScanner(self.symbolic_engine)
         self.simulator = LookaheadSimulator(self.generator, self.registry, self.goal_scanner)
 

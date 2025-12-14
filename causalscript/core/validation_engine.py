@@ -136,7 +136,7 @@ class ValidationEngine:
         # We can reuse the extensive logic from CoreRuntime here or simplify.
         # For now, let's use the symbolic engine's is_equiv.
         try:
-             is_valid = self.symbolic_engine.is_equiv(before_eval, after_eval)
+             is_valid = self.symbolic_engine.is_equiv(before_eval, after_eval, context=context)
         except Exception:
              is_valid = False
              

@@ -29,6 +29,10 @@ from causalscript.core.unit_engine import get_common_units
 from causalscript.core.decision_theory import DecisionConfig
 from causalscript.core.hint_engine import HintPersona
 from causalscript.core.knowledge_registry import KnowledgeRegistry
+from causalscript.core.tensor.engine import TensorLogicEngine
+from causalscript.core.tensor.converter import TensorConverter
+from causalscript.core.tensor.embeddings import EmbeddingRegistry
+from causalscript.core.reasoning.agent import ReasoningAgent
 
 # Page Config
 st.set_page_config(
@@ -74,10 +78,19 @@ def get_base_engines():
     # Inject common units into context
     for name, unit in get_common_units().items():
         comp_engine.bind(name, unit)
-        
-    return comp_engine, knowledge_registry, formatter
 
-comp_engine, knowledge_registry, formatter = get_base_engines()
+    # Initialize Tensor Logic Components
+    embedding_registry = EmbeddingRegistry()
+    tensor_converter = TensorConverter(embedding_registry)
+    
+    # Initialize Engine with safe vocab size for prototype
+    # vocab_size should be consistent or growable, here we start with reasonable buffer
+    tensor_engine = TensorLogicEngine(vocab_size=1000, embedding_dim=64)
+    
+    return comp_engine, knowledge_registry, formatter, tensor_engine, tensor_converter
+
+# Unpack
+comp_engine, knowledge_registry, formatter, tensor_engine, tensor_converter = get_base_engines()
 
 # --- Helper Functions ---
 
@@ -230,7 +243,7 @@ with st.sidebar:
             try:
                 # instantiate runtime for agent
                 # We reuse cached engines
-                comp, registry, _ = get_base_engines()
+                comp, registry, _, t_engine, t_conv = get_base_engines()
                 
                 # Minimal runtime for agent
                 # We need validation/hint engines even if unused by agent directly
@@ -253,7 +266,12 @@ with st.sidebar:
                     learning_logger=LearningLogger()
                 )
                 
-                agent = ReasoningAgent(agent_runtime)
+                # Use the unpacked tensor components from global scope (cached)
+                agent = ReasoningAgent(
+                    agent_runtime,
+                    tensor_engine=tensor_engine, 
+                    tensor_converter=tensor_converter
+                )
                 hypothesis = agent.think(agent_input)
                 
                 if hypothesis:

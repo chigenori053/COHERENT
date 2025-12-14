@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast as py_ast
 from dataclasses import dataclass
 from fractions import Fraction
-from typing import Any, Dict, Sequence, Set
+from typing import Any, Dict, Sequence, Set, Optional
 
 from .errors import InvalidExprError, EvaluationError
 from .simple_algebra import SimpleAlgebra, _Polynomial
@@ -290,7 +290,7 @@ class SymbolicEngine:
         except Exception:
             return False
 
-    def to_internal(self, expr: Any) -> Any:
+    def to_internal(self, expr: Any, *, extra_locals: Optional[Dict[str, Any]] = None) -> Any:
         # If it's already an internal type (SymPy object or AST), return it.
         if self._fallback is not None:
              if isinstance(expr, (py_ast.AST, list)): # list for matrix AST?
@@ -330,6 +330,24 @@ class SymbolicEngine:
                 for cls_name in geo_classes:
                     if hasattr(_sympy.geometry, cls_name):
                         local_dict[cls_name] = getattr(_sympy.geometry, cls_name)
+
+            if extra_locals:
+                # Safe conversion of context values to compatible types for SymPy
+                safe_locals = {}
+                for k, v in extra_locals.items():
+                    if isinstance(v, str):
+                        # Attempt to convert numeric strings to numbers to avoid SymPy eval errors
+                        # e.g. "1" * x -> "1"*x which SymPy dislikes in eval if treating "1" as str
+                        if v.isdigit():
+                            safe_locals[k] = int(v)
+                        else:
+                            try:
+                                safe_locals[k] = float(v)
+                            except ValueError:
+                                safe_locals[k] = v
+                    else:
+                        safe_locals[k] = v
+                local_dict.update(safe_locals)
             
             # Normalize power symbol
             expr = expr.replace("^", "**")
@@ -341,11 +359,13 @@ class SymbolicEngine:
         """Set the active mathematical context to prioritize strategies."""
         self.active_categories = categories
 
-    def is_equiv(self, expr1: str, expr2: str) -> bool:
+    def is_equiv(self, expr1: str, expr2: str, context: Optional[Dict[str, Any]] = None) -> bool:
         # 1. Try active strategies first
         for category in self.active_categories:
             strategy = self.strategies.get(category)
             if strategy:
+                # Strategies typically handle bare strings, but we might want to pass context down?
+                # For now, keep existing interface for strategies, they might simple-check
                 result = strategy.is_equiv(expr1, expr2, self)
                 if result is not None:
                     return result
@@ -353,15 +373,41 @@ class SymbolicEngine:
         # 2. Fallback to default logic (existing implementation)
         if self._fallback is not None:
             return self._fallback_is_equiv(expr1, expr2)
-        internal1 = self.to_internal(expr1)
-        internal2 = self.to_internal(expr2)
+            
         try:
+            # Pass context as locals to handle Matrix multiplication correctly
+            internal1 = self.to_internal(expr1, extra_locals=context)
+            internal2 = self.to_internal(expr2, extra_locals=context)
+            
+            if context and _sympy is not None:
+                # Still check for symbols that might remain (if not in context)
+                # But to_internal with extra_locals handles the Matrix case.
+                
+                # If to_internal didn't fully substitute (because keys didn't match?), try subs?
+                # If keys in context are strings matching symbols, they are used in sympify.
+                # If they are Symbols, they are NOT used in sympify locals (keys must be strings).
+                pass
+
             diff = _sympy.simplify(internal1 - internal2)
-            if diff == 0:
+            
+            # Check for zero matrix/vector
+            if hasattr(diff, 'is_zero'): # Matrix/Vector
+                if diff.is_zero:
+                    return True
+            elif diff == 0:
                 return True
-        except (TypeError, ValueError, AttributeError, Exception):
+                
+            # If simplify didn't strictly reduce to 0, try evalf if numeric?
+            # Or Norm if matrix?
+            if hasattr(diff, 'norm'):
+                if diff.norm() == 0:
+                    return True
+                    
+        except (TypeError, ValueError, AttributeError, Exception) as e:
             # If subtraction fails (e.g. FiniteSet - Equality), they are not equivalent in the standard sense.
             return False
+            
+        # Sampling fallback - typically for numeric scalars
         return self._numeric_sampling_equiv(expr1, expr2)
     
     def is_subexpression(self, sub_expr: str, full_expr: str) -> bool:
@@ -576,7 +622,12 @@ class SymbolicEngine:
                 return {"not_evaluatable": True}
             return self._fallback.evaluate(expr, context)
 
-        internal_expr = self.to_internal(expr)
+        internal_expr = self.to_internal(expr, extra_locals=context)
+
+        # Handle primitives (int, float) or other objects without free_symbols
+        if not hasattr(internal_expr, 'free_symbols'):
+             # It's likely a constant or fully evaluated result
+             return internal_expr
 
         free_symbols = internal_expr.free_symbols
         undefined_symbols = [s for s in free_symbols if str(s) not in context]

@@ -398,11 +398,11 @@ class CoreRuntime(Engine):
 
             is_lhs_equiv = False
             if lhs is not None:
-                is_lhs_equiv = self.computation_engine.symbolic_engine.is_equiv(before_eval, lhs_eval)
+                is_lhs_equiv = self.computation_engine.symbolic_engine.is_equiv(before_eval, lhs_eval, context=self._context)
             
             if is_lhs_equiv and rhs is not None:
                 # Check if LHS == RHS
-                is_eqn_valid = self.computation_engine.symbolic_engine.is_equiv(lhs_eval, rhs_eval)
+                is_eqn_valid = self.computation_engine.symbolic_engine.is_equiv(lhs_eval, rhs_eval, context=self._context)
                 if not is_eqn_valid and self._equation_mode:
                     is_eqn_valid = self._expressions_equivalent_up_to_scalar(lhs_eval, rhs_eval)
                 
@@ -480,7 +480,7 @@ class CoreRuntime(Engine):
                 lhs_in_before = False
 
             try:
-                lhs_rhs_equiv = self.computation_engine.symbolic_engine.is_equiv(lhs, rhs) if lhs is not None and rhs is not None else False
+                lhs_rhs_equiv = self.computation_engine.symbolic_engine.is_equiv(lhs, rhs, context=self._context) if lhs is not None and rhs is not None else False
             except Exception:
                 lhs_rhs_equiv = False
 

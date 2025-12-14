@@ -261,16 +261,11 @@ class ComputationEngine:
             "5*a + b"
         """
         try:
-            internal = self.symbolic_engine.to_internal(expr)
+            internal = self.symbolic_engine.to_internal(expr, extra_locals=substitutions)
             
             if self.symbolic_engine.has_sympy() and sympy is not None:
-                subs_dict = {}
-                for name, value in substitutions.items():
-                    sym = sympy.Symbol(name)
-                    subs_dict[sym] = value
-                
-                result = internal.subs(subs_dict)
-                result = sympy.simplify(result)
+                # result = internal.subs(subs_dict) # Redundant now
+                result = sympy.simplify(internal)
                 return str(result)
 
             try:
