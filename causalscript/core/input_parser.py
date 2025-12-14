@@ -28,7 +28,76 @@ class CausalScriptInputParser:
         "diff",
         "Subs",
         "Matrix",
+        "Point", "Line", "Circle", "Polygon", "Segment", "Ray", "Triangle"
     }
+
+    @staticmethod
+    def split_concatenated_identifiers(tokens: List[str]) -> List[str]:
+        result: List[str] = []
+        i = 0
+        while i < len(tokens):
+            token = tokens[i]
+
+            # SPECIAL CASE: Dot notation (e.g. .distance)
+            # If previous token was '.', treat this token as a property/method, do NOT split.
+            if result and result[-1] == '.':
+                 result.append(token)
+                 i += 1
+                 continue
+
+            # If we see a known function, we assume the following (...) block contains non-splittable identifiers.
+            if token in CausalScriptInputParser._KNOWN_FUNCTIONS and i + 1 < len(tokens) and tokens[i+1] == '(':
+                result.append(token) # func name
+                result.append('(')   # open paren
+                i += 2
+                
+                paren_depth = 1
+                # We need to handle the case of no arguments, e.g. func()
+                if i < len(tokens) and tokens[i] == ')':
+                    result.append(')')
+                    i += 1
+                    continue
+
+                while i < len(tokens):
+                    inner_token = tokens[i]
+                    if inner_token == '(':
+                        paren_depth += 1
+                    elif inner_token == ')':
+                        paren_depth -= 1
+
+                    # Add all tokens inside parens without splitting
+                    result.append(inner_token)
+                    i += 1
+                    if paren_depth == 0:
+                        break
+                continue
+
+            if CausalScriptInputParser._should_split_identifier(token):
+                result.extend(list(token))
+            else:
+                result.append(token)
+            i += 1
+        return result
+
+    @staticmethod
+    def insert_implicit_multiplication(tokens: List[str]) -> List[str]:
+        result: List[str] = []
+        for i, token in enumerate(tokens):
+            if i > 0:
+                prev = tokens[i-1]
+                if CausalScriptInputParser._needs_multiplication(prev, token):
+                    # Check for .method(...) exception to prevent .distance * (
+                    is_method_call = False
+                    if token == '(':
+                        # If prev is identifier and preceded by .
+                        if i > 1 and tokens[i-2] == '.':
+                            is_method_call = True
+                    
+                    if not is_method_call:
+                        result.append("*")
+            result.append(token)
+        return result
+
     _KNOWN_CONSTANTS = {"pi", "e"}
     _UNARY_PRECEDERS = {"(", "+", "-", "*", "/", "**"}
     _OP_TOKENS = {"+", "-", "*", "/", "**"}
@@ -46,8 +115,9 @@ class CausalScriptInputParser:
         tokens = CausalScriptInputParser.normalize_brackets(tokens)
         tokens = CausalScriptInputParser.normalize_derivatives(tokens)
         tokens = CausalScriptInputParser.normalize_integrals(tokens)
-        tokens = CausalScriptInputParser.split_concatenated_identifiers(tokens)
-        tokens = CausalScriptInputParser.insert_implicit_multiplication(tokens)
+        tokens = CausalScriptInputParser.normalize_integrals(tokens)
+        tokens = CausalScriptInputParser.split_identifiers_patched(tokens)
+        tokens = CausalScriptInputParser.insert_implicit_mult_patched(tokens)
         tokens = CausalScriptInputParser.normalize_functions(tokens)
         return CausalScriptInputParser.to_string(tokens)
 
@@ -570,11 +640,18 @@ class CausalScriptInputParser:
         return result
 
     @staticmethod
-    def split_concatenated_identifiers(tokens: List[str]) -> List[str]:
+    def split_identifiers_patched(tokens: List[str]) -> List[str]:
         result: List[str] = []
         i = 0
         while i < len(tokens):
             token = tokens[i]
+
+            # SPECIAL CASE: Dot notation (e.g. .distance)
+            # If previous token was '.', treat this token as a property/method, do NOT split.
+            if result and result[-1] == '.':
+                 result.append(token)
+                 i += 1
+                 continue
 
             # If we see a known function, we assume the following (...) block contains non-splittable identifiers.
             if token in CausalScriptInputParser._KNOWN_FUNCTIONS and i + 1 < len(tokens) and tokens[i+1] == '(':
@@ -611,14 +688,22 @@ class CausalScriptInputParser:
         return result
 
     @staticmethod
-    def insert_implicit_multiplication(tokens: List[str]) -> List[str]:
+    def insert_implicit_mult_patched(tokens: List[str]) -> List[str]:
         result: List[str] = []
-        prev_token: str | None = None
-        for token in tokens:
-            if prev_token is not None and CausalScriptInputParser._needs_multiplication(prev_token, token):
-                result.append("*")
+        for i, token in enumerate(tokens):
+            if i > 0:
+                prev = tokens[i-1]
+                if CausalScriptInputParser._needs_multiplication(prev, token):
+                    # Check for .method(...) exception to prevent .distance * (
+                    is_method_call = False
+                    if token == '(':
+                        # If prev is identifier and preceded by .
+                        if i > 1 and tokens[i-2] == '.':
+                            is_method_call = True
+                    
+                    if not is_method_call:
+                        result.append("*")
             result.append(token)
-            prev_token = token
         return result
 
     @staticmethod

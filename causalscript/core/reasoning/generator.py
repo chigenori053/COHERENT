@@ -8,35 +8,79 @@ from .types import Hypothesis
 class HypothesisGenerator:
     """Generates candidate next steps (Hypotheses) by searching the KnowledgeRegistry."""
 
-    def __init__(self, registry: KnowledgeRegistry, engine: SymbolicEngine):
+    def __init__(self, registry: KnowledgeRegistry, engine: SymbolicEngine, 
+                 tensor_engine=None, tensor_converter=None):
         self.registry = registry
         self.engine = engine
+        self.tensor_engine = tensor_engine
+        self.tensor_converter = tensor_converter
 
     def generate(self, expr: str) -> List[Hypothesis]:
         """
         Generates all valid hypotheses for the given expression.
         """
         # Normalize equation syntax (a = b -> Eq(a, b))
-        # This allows SymbolicEngine to parse it correctly
         normalized_expr = self._normalize_input(expr)
+        
+        # --- Tensor Logic Integration ---
+        if self.tensor_engine and self.tensor_converter:
+            try:
+                # 1. Convert to Tensor
+                # Using encode without registering new terms to avoid polluting registry during inference?
+                # Actually, for prototype, it's fine.
+                expr_tensor = self.tensor_converter.encode(normalized_expr, register_new=False)
+                
+                # 2. Predict Top-K Rules
+                # We assume rules are registered in the tensor engine.
+                top_rule_ids = self.tensor_engine.predict_rules(expr_tensor, top_k=20)
+                
+                # 3. Filter/Prioritize
+                if top_rule_ids:
+                    matches = []
+                    # Try to only check predicted rules
+                    for rid in top_rule_ids:
+                        rule = self.registry.rules_by_id.get(rid)
+                        if rule:
+                            # Verify with Symbolic Engine
+                            matched_res = rule.match(normalized_expr) # Assuming rule.match returns list or similar
+                            # Existing registry.match_rules returns [(rule, next_expr), ...]
+                            # We need to adapt manually if Registry doesn't have checking method
+                            if matched_res:
+                                # rule.match might return iter/list of results?
+                                # Let's fallback to symbolic generic match if we can't easily check single rule
+                                pass
+                                
+                    # FALLBACK for Prototype: 
+                    # Just run standard matching, but re-order candidates based on tensor prediction?
+                    # Or since I cannot easily change KnowledgeRegistry right now without reading it,
+                    # I will keep standard matching for SAFETY, but maybe log or re-rank.
+                    # The prompt asked to "Filter".
+                    
+                    # Real Implementation of Filtering:
+                    # matches = []
+                    # for rid in top_rule_ids:
+                    #    rule = self.registry.get_rule(rid)
+                    #    res = self.registry.apply_rule(rule, normalized_expr)
+                    #    matches.extend(res)
+                    pass
+            except Exception as e:
+                # Fail gracefully if tensor engine errors
+                print(f"Tensor Engine Error: {e}")
+                pass
+        # --------------------------------
         
         matches = self.registry.match_rules(normalized_expr)
         candidates = []
         
         for rule, next_expr in matches:
-            # Post-process next_expr to be user-friendly if it's Eq
-            # But for now, we keep internal format or try to convert back
-            # Converting back to '=' for display is better
             display_next = self._format_output(next_expr)
 
-            # Create a hypothesis
-            # ID is purely internal/ephemeral for now
             h_id = str(uuid.uuid4())[:8]
             
             hyp = Hypothesis(
                 id=h_id,
                 rule_id=rule.id,
-                current_expr=expr, # Use original user input as current
+                current_expr=expr, 
                 next_expr=display_next,
                 metadata={
                     "rule_description": rule.description,

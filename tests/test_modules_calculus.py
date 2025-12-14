@@ -12,7 +12,8 @@ def test_calculus_parser_normalization():
         # But we can check structure or just pass if it's an Expression
         assert isinstance(expr, ast.Expression)
     else:
-        assert str(expr).replace(" ", "") == "diff(x**2,x)"
+        # We mapped diff -> Derivative (unevaluated)
+        assert str(expr).replace(" ", "") == "Derivative(x**2,x)"
 
 def test_calculus_engine_differentiation():
     pytest.importorskip("sympy")

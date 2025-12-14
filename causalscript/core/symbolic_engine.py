@@ -307,11 +307,14 @@ class SymbolicEngine:
         try:
             # Ensure 'e' is treated as Euler's number and 'pi' as pi
             # Map 'integrate' to 'Integral' to prevent eager evaluation (Late Evaluation Mode)
+            # Map 'diff' to 'Derivative' for same reason
             local_dict = {
                 "e": _sympy.E, 
                 "pi": _sympy.pi, 
                 "integrate": _sympy.Integral, 
                 "Integral": _sympy.Integral, 
+                "diff": _sympy.Derivative,
+                "Derivative": _sympy.Derivative,
                 "Subs": _sympy.Subs,
                 "System": _sympy.FiniteSet, # Map System to FiniteSet
                 "Eq": _sympy.Eq,
@@ -320,6 +323,14 @@ class SymbolicEngine:
                 "median": _symbolic_median,
                 "mode": _symbolic_mode
             }
+            
+            # Add Geometry classes if available
+            if hasattr(_sympy, 'geometry'):
+                geo_classes = ['Point', 'Line', 'Circle', 'Polygon', 'Segment', 'Ray', 'Triangle']
+                for cls_name in geo_classes:
+                    if hasattr(_sympy.geometry, cls_name):
+                        local_dict[cls_name] = getattr(_sympy.geometry, cls_name)
+            
             # Normalize power symbol
             expr = expr.replace("^", "**")
             return _sympy.sympify(expr, locals=local_dict)
@@ -568,20 +579,47 @@ class SymbolicEngine:
         internal_expr = self.to_internal(expr)
 
         free_symbols = internal_expr.free_symbols
-        if not context and free_symbols:
-            return {"not_evaluatable": True}
         undefined_symbols = [s for s in free_symbols if str(s) not in context]
-        if undefined_symbols:
-            raise EvaluationError(f"Undefined symbols: {', '.join(map(str, undefined_symbols))}")
 
-        subs = {s: context.get(str(s)) for s in free_symbols}
+        # MODIFIED: Try symbolic evaluation (doit) even if context is missing
+        # This allows computing derivatives/integrals etc.
+        subs = {s: context.get(str(s)) for s in free_symbols if str(s) in context}
 
         try:
             result = internal_expr.subs(subs)
+            
+            # If we still have free symbols, try explicit evaluation (doit)
+            # e.g. Derivative(x**2, x) -> 2*x
+            if hasattr(result, "doit"):
+                result = result.doit()
+                
+            # If it's still containing symbols but that's expected (symbolic calc), return it.
+            # But the contract might be "return number if possible".
+            # If result still has integrals/derivatives that couldn't be done, maybe we keep it.
+            
+            # For consistency with existing tests that might expect numbers:
+            # The failing test expects '3*x**2'. So returning symbolic is DESIRED.
+            
+            # We return Python numbers if it fully simplifies to one.
             if not result.free_symbols:
                 simplified = _sympy.simplify(result)
-                return self._to_python_number(simplified)
-            return {"not_evaluatable": True}
+                python_val = self._to_python_number(simplified)
+                # If it's a symbolic constant (pi, E), _to_python_number keeps it. good.
+                return python_val
+            
+            # If context was provided but we still have symbols (because we didn't provide all?)
+            # The original logic blocked this.
+            # "undefined_symbols" check was strict.
+            # But for calculus, we might only provide SOME symbols or NONE.
+            
+            # Let's return the symbolic result if it looks significantly evaluated?
+            # Or just return it always?
+            # The previous logic returned {"not_evaluatable": True}.
+            # Let's return the internal result (Symbolic object), and let to_python_number handle it if needed?
+            # But normally evaluate returns primitives or SymPy objects.
+            
+            return result
+
         except Exception as exc:
             raise EvaluationError(f"Failed to evaluate expression: {exc}")
 
