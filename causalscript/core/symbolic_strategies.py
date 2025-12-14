@@ -87,15 +87,7 @@ class AlgebraStrategy(SymbolicStrategy):
     """Strategy for general algebraic expressions."""
 
     def is_equiv(self, expr1: str, expr2: str, engine: Any) -> Optional[bool]:
-        # This is the default fallback behavior usually, but we can be explicit
-        if _sympy:
-            try:
-                internal1 = engine.to_internal(expr1)
-                internal2 = engine.to_internal(expr2)
-                diff = _sympy.simplify(internal1 - internal2)
-                return diff == 0
-            except Exception:
-                pass
+        # Delegate to SymbolicEngine's default logic which handles context and list conversions.
         return None
 
     def simplify(self, expr: str, engine: Any) -> Optional[str]:

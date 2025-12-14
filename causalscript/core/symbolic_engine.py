@@ -360,6 +360,10 @@ class SymbolicEngine:
         self.active_categories = categories
 
     def is_equiv(self, expr1: str, expr2: str, context: Optional[Dict[str, Any]] = None) -> bool:
+        """
+        Check if two expressions are symbolically equivalent.
+        """
+        
         # 1. Try active strategies first
         for category in self.active_categories:
             strategy = self.strategies.get(category)
@@ -382,11 +386,23 @@ class SymbolicEngine:
             if context and _sympy is not None:
                 # Still check for symbols that might remain (if not in context)
                 # But to_internal with extra_locals handles the Matrix case.
-                
-                # If to_internal didn't fully substitute (because keys didn't match?), try subs?
-                # If keys in context are strings matching symbols, they are used in sympify.
-                # If they are Symbols, they are NOT used in sympify locals (keys must be strings).
                 pass
+
+            if _sympy:
+                # Automatic List-to-Matrix conversion if comparing against a Matrix
+                is_mat1 = getattr(internal1, "is_Matrix", False)
+                is_mat2 = getattr(internal2, "is_Matrix", False)
+
+                if is_mat1 and isinstance(internal2, list):
+                    try:
+                        internal2 = _sympy.Matrix(internal2)
+                    except Exception:
+                        pass
+                elif is_mat2 and isinstance(internal1, list):
+                    try:
+                        internal1 = _sympy.Matrix(internal1)
+                    except Exception:
+                        pass
 
             diff = _sympy.simplify(internal1 - internal2)
             
