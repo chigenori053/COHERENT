@@ -26,8 +26,7 @@ class ReasoningAgent:
         self.generator = HypothesisGenerator(
             self.registry, 
             self.symbolic_engine,
-            tensor_engine=tensor_engine,
-            tensor_converter=tensor_converter
+            optical_weights_path=None # Can pass explicit path if available in runtime config
         )
         self.goal_scanner = GoalScanner(self.symbolic_engine)
         self.simulator = LookaheadSimulator(self.generator, self.registry, self.goal_scanner)

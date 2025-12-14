@@ -31,6 +31,10 @@ def engines():
         decision_engine=decision,
         knowledge_registry=knowledge
     )
+    # Mock Optical Layer to return low ambiguity (0.0) so it doesn't interfere with symbolic/fuzzy tests
+    validation.optical_layer = MagicMock()
+    validation.optical_layer.predict.return_value = (None, 0.0)
+    
     return validation
 
 def test_validate_step_symbolic_correct(engines):

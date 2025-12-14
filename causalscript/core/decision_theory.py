@@ -77,6 +77,7 @@ class DecisionConfig:
     """Configuration for the Decision Engine."""
     strategy: str = "balanced"
     algorithm: Literal["expected_utility", "minimax_regret"] = "expected_utility"
+    ambiguity_threshold: float = 0.8
     custom_matrix: Optional[Dict] = None
 
     @property
@@ -93,16 +94,25 @@ class DecisionEngine:
     def __init__(self, config: DecisionConfig):
         self.config = config
 
-    def decide(self, probability_match: float) -> Tuple[DecisionAction, float, Dict[str, float]]:
+    def decide(self, probability_match: float, ambiguity: float = 0.0) -> Tuple[DecisionAction, float, Dict[str, float]]:
         """
-        Decide the best action given the probability of a match.
+        Decide the best action given the probability of a match and ambiguity.
 
         Args:
             probability_match: The probability that the state is MATCH (0.0 to 1.0).
+            ambiguity: The uncertainty/ambiguity of the signal (0.0 to 1.0).
 
         Returns:
             Tuple of (Selected Action, Expected Utility of that action, Debug info)
         """
+        # High ambiguity forces a conservative calibration
+        if ambiguity > self.config.ambiguity_threshold:
+            # If slightly confident but very ambiguous, force REVIEW
+            if probability_match > 0.4:
+                return DecisionAction.REVIEW, 0.0, {"reason": "High Ambiguity", "ambiguity": ambiguity}
+            else:
+                return DecisionAction.REJECT, 0.0, {"reason": "High Ambiguity & Low Prob", "ambiguity": ambiguity}
+
         if self.config.algorithm == "minimax_regret":
             return self._decide_minimax_regret(probability_match)
         else:

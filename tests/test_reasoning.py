@@ -23,6 +23,7 @@ class TestReasoningComponents(unittest.TestCase):
         
         # Mock registry for unit tests to avoid dependency on filesystem rules
         self.mock_registry = MagicMock(spec=KnowledgeRegistry)
+        self.mock_registry.nodes = [] # Needed for Optical Layer init
         self.mock_registry.match_rules.return_value = []
         
         self.generator = HypothesisGenerator(self.mock_registry, self.sym_engine)

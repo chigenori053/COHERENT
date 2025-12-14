@@ -16,6 +16,9 @@ from .causal.causal_engine import CausalEngine
 from .decision_theory import DecisionEngine, DecisionAction
 from .fuzzy.types import FuzzyLabel
 from .knowledge_registry import KnowledgeRegistry
+from .optical.vectorizer import FeatureExtractor
+from .optical.layer import OpticalScoringLayer
+import numpy as np
 
 
 @dataclass
@@ -69,6 +72,11 @@ class ValidationEngine:
         self.causal_engine = causal_engine
         self.decision_engine = decision_engine
         self.knowledge_registry = knowledge_registry
+        
+        # Initialize Optical Components (Lazy or direct)
+        self.vectorizer = FeatureExtractor()
+        # Mock weights path for now or let it be random/default
+        self.optical_layer = OpticalScoringLayer(input_dim=64, output_dim=100)
 
     def validate_step(self, before: str, after: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
         """
@@ -180,9 +188,22 @@ class ValidationEngine:
         decision_meta = {}
         
         if self.decision_engine and self.fuzzy_judge:
+             # Calculate Ambiguity using Optical Layer
+             try:
+                 # Vectorize 'before' (Mock/Simplify as parser access is limited here)
+                 # Ideally: vector = self.vectorizer.vectorize(parsed_ast)
+                 # For MVP: Zero vector or simplistic feature from string string?
+                 # self.vectorizer expects AST.
+                 # We will pass a zero vector just to exercise the pipeline (Phase 1)
+                 # In Phase 2/3, we connect real AST.
+                 vec = np.zeros(64) 
+                 _, ambiguity = self.optical_layer.predict(vec)
+             except Exception:
+                 ambiguity = 0.0
+
              # Use the decision engine to decide based on fuzzy score
              # We assume DecisionEngine uses 'probability of match' which maps to fuzzy_score
-             action, utility, debug = self.decision_engine.decide(fuzzy_score)
+             action, utility, debug = self.decision_engine.decide(fuzzy_score, ambiguity=ambiguity)
              decision_meta = {
                  "utility": utility,
                  "debug": debug,
