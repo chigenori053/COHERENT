@@ -121,3 +121,6 @@ webcolors==25.10.0
 webencodings==0.5.1
 websocket-client==1.9.0
 widgetsnbextension==4.0.15
+torch>=2.0.0
+sentence-transformers>=3.0.0
+chromadb>=0.4.0
