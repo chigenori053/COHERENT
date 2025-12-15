@@ -196,8 +196,16 @@ class ValidationEngine:
                  # self.vectorizer expects AST.
                  # We will pass a zero vector just to exercise the pipeline (Phase 1)
                  # In Phase 2/3, we connect real AST.
-                 vec = np.zeros(64) 
-                 _, ambiguity = self.optical_layer.predict(vec)
+                 # For MVP: Zero vector or simplistic feature from string string?
+                 # self.vectorizer expects AST.
+                 # We will pass a zero vector just to exercise the pipeline (Phase 1)
+                 # In Phase 2/3, we connect real AST.
+                 import torch
+                 vec = torch.zeros(64) 
+                 # Use PyTorch forward pass (no predict method)
+                 # Returns (intensity, ambiguity)
+                 with torch.no_grad():
+                     _, ambiguity = self.optical_layer(vec)
              except Exception:
                  ambiguity = 0.0
 

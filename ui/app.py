@@ -237,6 +237,7 @@ with st.sidebar:
         st.rerun()
 
     st.header("🤖 Reasoning Agent")
+
     with st.expander("Ask for Next Step"):
         agent_input = st.text_input("Expression", value="2*x + 4 = 10")
         if st.button("Think"):
@@ -283,6 +284,62 @@ with st.sidebar:
                     
             except Exception as e:
                 st.error(f"Agent Error: {e}")
+
+    with st.expander("Optical Learning"):
+        if st.button("Retrain Model"):
+            with st.spinner("Training..."):
+                try:
+                    comp, registry, _, t_engine, t_conv = get_base_engines()
+                    
+                    from causalscript.core.validation_engine import ValidationEngine as VE
+                    from causalscript.core.hint_engine import HintEngine as HE
+                    from causalscript.core.learning_logger import LearningLogger
+
+                    ve = VE(comp) 
+                    he = HE(comp)
+                    agent_runtime = CoreRuntime(
+                        comp, ve, he, 
+                        knowledge_registry=registry,
+                        learning_logger=LearningLogger()
+                    )
+                     
+                    agent = ReasoningAgent(
+                        agent_runtime,
+                        tensor_engine=tensor_engine, 
+                        tensor_converter=tensor_converter
+                    )
+                    
+                    
+                    # Extract Data from Session Logs
+                    training_data = []
+                    logs = st.session_state.get('logs', [])
+                    
+                    if not logs:
+                        st.warning("No logs found. Run a test first to generate training data.")
+                    else:
+                        rule_ids = agent.generator.rule_ids
+                        
+                        for record in logs:
+                            # We only learn from successful rule applications
+                            if record.get('status') in ['ok', 'correct'] and record.get('phase') == 'step':
+                                expr = record.get('expression')
+                                meta = record.get('meta', {})
+                                rule = meta.get('rule', {})
+                                rule_id = rule.get('id')
+                                
+                                if expr and rule_id and rule_id in rule_ids:
+                                    target_idx = rule_ids.index(rule_id)
+                                    training_data.append((expr, target_idx))
+                        
+                        if not training_data:
+                            st.warning("No valid training samples found in logs (Success steps with valid rules).")
+                        else:
+                            st.info(f"Training on {len(training_data)} samples extracted from logs...")
+                            loss = agent.retrain(training_data, epochs=5)
+                            st.success(f"Training Complete! Final Loss: {loss:.4f}")
+                    
+                except Exception as e:
+                    st.error(f"Training Failed: {e}")
 
 import graphviz
 
@@ -476,7 +533,7 @@ with col_results:
     st.subheader("📊 Test Report")
     
     # Tabs for different views
-    tab1, tab2, tab3 = st.tabs(["Steps", "Visualization", "Raw Logs"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Steps", "Visualization", "Detailed Logs", "Raw Logs"])
     
     with tab1:
         if st.session_state.history:
@@ -495,8 +552,27 @@ with col_results:
             st.graphviz_chart(st.session_state.graph)
         else:
             st.info("Run a test to generate visualization.")
-            
+
     with tab3:
+        if st.session_state.logs:
+            for i, record in enumerate(st.session_state.logs):
+                # Use expander for each log entry
+                label = f"Step {i}: {record.get('phase', 'UNKNOWN')} - {record.get('status', 'N/A')}"
+                if record.get('expression'):
+                    label += f" | {record['expression'][:30]}..."
+                    
+                with st.expander(label, expanded=False):
+                    st.write(f"**Phase**: `{record.get('phase')}`")
+                    st.write(f"**Expression**: `{record.get('expression')}`")
+                    st.write(f"**Status**: `{record.get('status')}`")
+                    st.write(f"**Rule ID**: `{record.get('rule_id')}`")
+                    st.write("**Metadata**:")
+                    st.json(record.get('meta', {}))
+                    st.write(f"**Timestamp**: {record.get('timestamp')}")
+        else:
+            st.info("No logs available.")
+            
+    with tab4:
         if st.session_state.logs:
             st.json(st.session_state.logs)
         else:

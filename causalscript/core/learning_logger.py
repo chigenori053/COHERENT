@@ -111,10 +111,19 @@ class LearningLogger:
                 embedder = get_embedder()
                 
                 # Determine result label
-                result_label = "EXACT" if status == "ok" else "ANALOGOUS" if status == "fuzzy_ok" else "CONTRADICT"
+                if status == "ok":
+                    result_label = "EXACT"
+                elif status == "fuzzy_ok":
+                    result_label = "ANALOGOUS"
+                elif status == "contradiction":
+                    result_label = "CONTRADICT"
+                else: 
+                    # For error/mistakes, we label as MISTAKE if it was a valid attempt 
+                    # (which it is if we are here and have a rule_id usually, or just a failed step)
+                    result_label = "MISTAKE"
                 
                 # Construct vector representation
-                # "Problem: {expression}. Action: {rule_id}. Result: {status}"
+                # "Problem: {expression}. Action: {rule_id}. Result: {result_label}"
                 text_to_embed = f"Problem: {expression}. Action: {rule_id or 'unknown'}. Result: {result_label}"
                 vector = embedder.embed_text(text_to_embed)
                 
