@@ -94,7 +94,7 @@ comp_engine, knowledge_registry, formatter, tensor_engine, tensor_converter = ge
 
 # --- Helper Functions ---
 
-def render_test_report(step_index, step_data):
+def render_test_report(step_index, step_data, key_prefix):
     """Renders a detailed test report for a single step."""
     status = step_data['status']
     is_ok = status == "ok"
@@ -148,8 +148,8 @@ def render_test_report(step_index, step_data):
                 # Concept & Description
                 concept = rule.get('concept')
                 if concept:
-                     st.markdown(f"**Concept**: `{concept}`")
-                     
+                      st.markdown(f"**Concept**: `{concept}`")
+                      
                 st.caption(rule.get('description', ''))
             else:
                 st.markdown("Rule Match: *None*")
@@ -174,7 +174,7 @@ def render_test_report(step_index, step_data):
                 st.markdown(f"**Utility**: `{utility:.2f}`")
                 
                 if 'decision_utils' in analysis:
-                    with st.expander("Utility Breakdown"):
+                    with st.expander(f"Utility Breakdown (Step {step_index})"):
                         st.json(analysis['decision_utils'])
             else:
                 st.markdown("*No decision data available*")
@@ -543,7 +543,7 @@ with col_results:
                 st.info("No steps recorded.")
             else:
                 for i, step in enumerate(steps):
-                    render_test_report(i + 1, step)
+                    render_test_report(i + 1, step, key_prefix=f"report_{i}")
         else:
             st.info("Run a test to see results.")
             
