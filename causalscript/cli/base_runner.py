@@ -137,5 +137,7 @@ def run_cli(
         postprocess(records, knowledge_registry, counterfactual_arg)
         print(f"Error: {exc}", file=sys.stderr)
     except Exception as exc:  # pragma: no cover
+        import traceback
+        traceback.print_exc()
         print(f"Unexpected error: {exc}", file=sys.stderr)
     return 1

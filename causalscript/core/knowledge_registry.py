@@ -448,7 +448,11 @@ class KnowledgeRegistry:
         for node in self.nodes:
             check_node(node)
             
-        return list(dict.fromkeys(suggestions))  # Remove duplicates preserving order
+        # Ensure all suggestions are strings to avoid unhashable type errors (e.g. lists for matrices)
+        str_suggestions = [str(s) for s in suggestions]
+        return list(dict.fromkeys(str_suggestions))
+
+
 
     def match_rules(self, before: str, category: str | None = None) -> List[Tuple[KnowledgeNode, str]]:
         """
