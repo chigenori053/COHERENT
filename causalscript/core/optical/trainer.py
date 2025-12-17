@@ -3,14 +3,14 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 from typing import List, Tuple, Optional
-from .layer import OpticalScoringLayer
+from .layer import OpticalInterferenceEngine
 from .vectorizer import FeatureExtractor
 
 class OpticalTrainer:
     """
-    Handles the training loop for the OpticalScoringLayer using Backpropagation.
+    Handles the training loop for the OpticalInterferenceEngine using Backpropagation.
     """
-    def __init__(self, model: OpticalScoringLayer, vectorizer: FeatureExtractor, lr: float = 0.01):
+    def __init__(self, model: OpticalInterferenceEngine, vectorizer: FeatureExtractor, lr: float = 0.01):
         self.model = model
         self.vectorizer = vectorizer
         # Adam optimizer works well for complex parameters too in PyTorch
@@ -45,8 +45,8 @@ class OpticalTrainer:
         # 2. Forward Pass
         self.optimizer.zero_grad()
         
-        # returns intensity, ambiguity
-        intensity, _ = self.model(input_tensor) # [1, NumRules]
+        # returns intensity (resonance energy)
+        intensity = self.model(input_tensor) # [1, NumRules]
         
         # 3. Loss Calculation
         # We want to maximize intensity at target_rule_idx

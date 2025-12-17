@@ -2,13 +2,13 @@ import pytest
 import torch
 import numpy as np
 from unittest.mock import MagicMock
-from causalscript.core.optical.layer import OpticalScoringLayer
+from causalscript.core.optical.layer import OpticalInterferenceEngine
 from causalscript.core.optical.trainer import OpticalTrainer
 from causalscript.core.optical.vectorizer import FeatureExtractor
 
 @pytest.fixture
 def trainer_and_model():
-    model = OpticalScoringLayer(input_dim=10, output_dim=5)
+    model = OpticalInterferenceEngine(input_dim=10, memory_capacity=5)
     vectorizer = FeatureExtractor(vector_size=10)
     trainer = OpticalTrainer(model, vectorizer, lr=0.1)
     return trainer, model

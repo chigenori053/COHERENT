@@ -1,2 +1,2 @@
 from .vectorizer import FeatureExtractor
-from .layer import OpticalScoringLayer
+from .layer import OpticalInterferenceEngine

@@ -1,21 +1,23 @@
 import pytest
 import torch
 import numpy as np
-from causalscript.core.optical.layer import OpticalScoringLayer
+from causalscript.core.optical.layer import OpticalInterferenceEngine
 
 def test_optical_layer_initialization():
-    layer = OpticalScoringLayer(input_dim=10, output_dim=5)
+    layer = OpticalInterferenceEngine(input_dim=10, memory_capacity=5)
     assert layer.input_dim == 10
-    assert layer.output_dim == 5
-    assert layer.weights.shape == (5, 10)
-    assert layer.weights.dtype == torch.cfloat
-    assert layer.weights.requires_grad
+    assert layer.memory_capacity == 5
+    # Weights are now 'optical_memory'
+    assert layer.optical_memory.shape == (5, 10)
+    assert layer.optical_memory.dtype == torch.cfloat
+    assert layer.optical_memory.requires_grad
 
 def test_optical_layer_forward_shape():
-    layer = OpticalScoringLayer(input_dim=10, output_dim=5)
+    layer = OpticalInterferenceEngine(input_dim=10, memory_capacity=5)
     # Batch size 1
     input_tensor = torch.randn(10)
-    intensity, ambiguity = layer(input_tensor)
+    intensity = layer(input_tensor)
+    ambiguity = layer.get_ambiguity(intensity)
     
     assert intensity.shape == (1, 5)
     # Intensity should be real and non-negative
@@ -26,10 +28,11 @@ def test_optical_layer_forward_shape():
     assert 0.0 <= ambiguity <= 1.0
 
 def test_optical_layer_forward_batch():
-    layer = OpticalScoringLayer(input_dim=10, output_dim=5)
+    layer = OpticalInterferenceEngine(input_dim=10, memory_capacity=5)
     # Batch size 3
     input_tensor = torch.randn(3, 10)
-    intensity, ambiguity = layer(input_tensor)
+    intensity = layer(input_tensor)
+    ambiguity = layer.get_ambiguity(intensity)
     
     assert intensity.shape == (3, 5)
     # Ambiguity is currently calc based on [0] for single inference compatibility, 
@@ -37,11 +40,11 @@ def test_optical_layer_forward_batch():
     assert isinstance(ambiguity, float)
 
 def test_optical_layer_backward():
-    layer = OpticalScoringLayer(input_dim=10, output_dim=5)
+    layer = OpticalInterferenceEngine(input_dim=10, memory_capacity=5)
     input_tensor = torch.randn(10, dtype=torch.cfloat)
     
     # Forward
-    intensity, _ = layer(input_tensor)
+    intensity = layer(input_tensor)
     
     # Loss (minimize sum)
     loss = intensity.sum()
@@ -50,6 +53,6 @@ def test_optical_layer_backward():
     layer.zero_grad()
     loss.backward()
     
-    assert layer.weights.grad is not None
+    assert layer.optical_memory.grad is not None
     # Gradient should be complex since weights are complex
-    assert layer.weights.grad.dtype == torch.cfloat
+    assert layer.optical_memory.grad.dtype == torch.cfloat

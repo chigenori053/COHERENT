@@ -1,97 +1,111 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Union
 import os
 
-class OpticalScoringLayer(nn.Module):
+from causalscript.core.holographic.data_types import HolographicTensor
+
+class OpticalInterferenceEngine(nn.Module):
     """
-    Simulates optical interference to score potential rules using PyTorch.
-    Learns the relationship between AST structure (Phase/Amplitude) and Rule Applicability.
+    Multimodal Optical Interference Engine.
+    
+    Core Principle:
+    Simulates optical interference to calculate resonance between input "Probe Waves" (HolographicTensor)
+    and stored "Memory Waves" (Weights).
+    
+    Operation:
+    Resonance = | Probe x Memory^H |^2
+    Where x is complex matrix multiplication and H is Hermitian transpose (conjugate transpose).
     """
 
-    def __init__(self, weights_path: Optional[str] = None, input_dim: int = 64, output_dim: int = 100):
+    def __init__(self, memory_capacity: int = 100, input_dim: int = 1024, weights_path: Optional[str] = None):
         super().__init__()
         self.input_dim = input_dim
-        self.output_dim = output_dim
+        self.memory_capacity = memory_capacity
         
-        # Initialize complex weights for wave simulation
-        # Real part: Amplitude, Imaginary part: Phase
-        # We explicitly manage weights as a Parameter for autograd
-        self.weights = nn.Parameter(torch.randn(output_dim, input_dim, dtype=torch.cfloat))
+        # Optical Memory Matrix (Knowledge Base)
+        # Rows: Memory Content (Concept/Rule), Cols: Frequency Bins
+        # Initialized with complex random numbers
+        self.optical_memory = nn.Parameter(torch.randn(memory_capacity, input_dim, dtype=torch.cfloat))
+        # Hook to fix "view_as_real doesn't work on unresolved conjugated tensors" error in Adam
+        self.optical_memory.register_hook(lambda grad: grad.resolve_conj())
         
         if weights_path:
-            self._load_weights(weights_path)
+            self._load_memory(weights_path)
 
-    def _load_weights(self, path: str):
+    def _load_memory(self, path: str):
         if os.path.exists(path):
             try:
-                # Load state dict or raw tensor
-                # For compatibility with potential old numpy files, we check extension
                 if path.endswith('.npy'):
                     np_weights = np.load(path)
                     with torch.no_grad():
-                        self.weights.copy_(torch.from_numpy(np_weights))
+                        self.optical_memory.copy_(torch.from_numpy(np_weights))
                 else:
                     state_dict = torch.load(path)
                     self.load_state_dict(state_dict)
             except Exception as e:
-                print(f"Warning: Could not load weights from {path}. Using random initialization. Error: {e}")
+                print(f"Warning: Could not load optical memory from {path}. Using random initialization. Error: {e}")
 
-    def forward(self, input_tensor: torch.Tensor) -> Tuple[torch.Tensor, float]:
+    def forward(self, input_batch: Union[HolographicTensor, torch.Tensor]) -> torch.Tensor:
         """
-        Performs the optical transformation.
+        Massive Parallel Interference Calculation.
         
         Args:
-            input_tensor: The feature tensor of the AST. Shape: [Batch, InputDim] or [InputDim]
+            input_batch: [Batch, InputDim] Complex Tensor (Probe Wave)
             
         Returns:
-            intensity: Tensor of intensity scores.
-            ambiguity: Float representing signal ambiguity.
+            Resonance Energy: [Batch, MemoryCapacity] Real Tensor (Intensity)
         """
-        # Ensure input is at least 1D, potentially add batch dim if missing
-        if input_tensor.dim() == 1:
-            input_tensor = input_tensor.unsqueeze(0) # [1, Dim]
+        # 1. Ensure Input is Complex Holographic Tensor
+        if not input_batch.is_complex():
+             input_batch = input_batch.type(torch.cfloat)
+             
+        # Add batch dim if single input
+        if input_batch.dim() == 1:
+            input_batch = input_batch.unsqueeze(0)
             
-        # Ensure complex type for interference (Phase + Amplitude)
-        if not input_tensor.is_complex():
-            input_tensor = input_tensor.type(torch.cfloat)
+        # 2. Interference Calculation (Wave Superposition)
+        # We compute the dot product between the input wave and the conjugate of the memory wave.
+        # This is equivalent to physical optical correlation.
+        # [B, D] x [M, D]^T -> [B, M] (using Hermitian transpose implicitly via conj in some frameworks, 
+        # but torch.matmul with complex handles algebraic mult. We want correlation: sum(u * conj(v)))
+        
+        # To simulate "Interference" as similarity/resonance:
+        # <u, v> = sum(u_i * conj(v_i))
+        # We use .conj().t() for the memory
+        
+        interference_pattern = torch.matmul(input_batch, self.optical_memory.conj().resolve_conj().t())
+        
+        # 3. Intensity Detection (Square Law Detector)
+        # Phase information is lost here, converted to energy (probability/relevance)
+        resonance_energy = interference_pattern.abs() ** 2
+        
+        return resonance_energy
 
-        # Linear transformation (Optical Propagation)
-        # Signal S = x * W^T
-        # input: [B, In], weights: [Out, In] -> [B, Out]
-        signal = torch.matmul(input_tensor, self.weights.t())
-        
-        # Intensity I = |S|^2
-        intensity = signal.abs() ** 2
-        
-        # Calculate Ambiguity (entropy) on the first item in batch (usually batch=1 for inference)
-        # For batch training, we might average it, but for compatibility with predict signature:
-        ambiguity = self._calculate_ambiguity(intensity[0])
-        
-        return intensity, ambiguity
-
-    def _calculate_ambiguity(self, intensity: torch.Tensor) -> float:
+    def get_ambiguity(self, resonance_energy: torch.Tensor) -> float:
         """
-        Calculates ambiguity based on the entropy of the normalized intensity distribution.
+        Calculates ambiguity (entropy) of the resonance distribution.
+        High ambiguity = System is unsure (many memories resonating equally).
         """
         with torch.no_grad():
-            total_energy = intensity.sum()
+            # For simplicity, calculate on the mean of the batch or the first item
+            energy_profile = resonance_energy.mean(dim=0)
+            
+            total_energy = energy_profile.sum()
             if total_energy == 0:
-                return 1.0 
+                return 1.0
                 
-            probs = intensity / total_energy
+            probs = energy_profile / total_energy
             epsilon = 1e-10
-            # Shannon Entropy
             entropy = -torch.sum(probs * torch.log(probs + epsilon))
             
-            # Normalize
-            max_entropy = np.log(len(intensity))
+            max_entropy = np.log(self.memory_capacity)
             if max_entropy == 0:
                 return 0.0
                 
-            normalized_ambiguity = entropy.item() / max_entropy
-            return float(normalized_ambiguity)
+            return float(entropy.item() / max_entropy)
 
     def save(self, path: str):
         torch.save(self.state_dict(), path)
+

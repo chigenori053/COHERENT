@@ -255,6 +255,7 @@ dependencies = [
     { name = "sentence-transformers" },
     { name = "streamlit" },
     { name = "sympy" },
+    { name = "torch" },
 ]
 
 [package.metadata]
@@ -268,6 +269,7 @@ requires-dist = [
     { name = "sentence-transformers", specifier = ">=5.2.0" },
     { name = "streamlit", specifier = ">=1.38" },
     { name = "sympy", specifier = ">=1.13" },
+    { name = "torch", specifier = ">=2.0.0" },
 ]
 
 [[package]]

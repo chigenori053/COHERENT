@@ -7,7 +7,7 @@ from ..knowledge_registry import KnowledgeRegistry
 from ..symbolic_engine import SymbolicEngine
 from .types import Hypothesis
 from ..optical.vectorizer import FeatureExtractor
-from ..optical.layer import OpticalScoringLayer
+from ..optical.layer import OpticalInterferenceEngine
 
 class HypothesisGenerator:
     """
@@ -30,10 +30,10 @@ class HypothesisGenerator:
         self.rule_ids = [node.id for node in registry.nodes] 
         output_dim = len(self.rule_ids) if self.rule_ids else 100
         
-        self.optical_layer = OpticalScoringLayer(
+        self.optical_layer = OpticalInterferenceEngine(
             weights_path=optical_weights_path, 
             input_dim=64, 
-            output_dim=output_dim
+            memory_capacity=output_dim
         )
         # Set to eval mode for inference by default
         self.optical_layer.eval()
@@ -64,8 +64,9 @@ class HypothesisGenerator:
             # Use no_grad for inference to save memory/compute
             with torch.no_grad():
                 # [Batch=1, Dim]
-                # returns (intensity, ambiguity)
-                intensity, ambiguity = self.optical_layer(input_tensor)
+                # returns intensity
+                intensity = self.optical_layer(input_tensor)
+                ambiguity = self.optical_layer.get_ambiguity(intensity)
                 
             # Convert intensity to numpy for handling
             scores = intensity.squeeze().cpu().numpy()

@@ -17,7 +17,7 @@ from .decision_theory import DecisionEngine, DecisionAction
 from .fuzzy.types import FuzzyLabel
 from .knowledge_registry import KnowledgeRegistry
 from .optical.vectorizer import FeatureExtractor
-from .optical.layer import OpticalScoringLayer
+from .optical.layer import OpticalInterferenceEngine
 import numpy as np
 
 
@@ -76,7 +76,7 @@ class ValidationEngine:
         # Initialize Optical Components (Lazy or direct)
         self.vectorizer = FeatureExtractor()
         # Mock weights path for now or let it be random/default
-        self.optical_layer = OpticalScoringLayer(input_dim=64, output_dim=100)
+        self.optical_layer = OpticalInterferenceEngine(input_dim=64, memory_capacity=100)
 
     def validate_step(self, before: str, after: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
         """
@@ -205,7 +205,7 @@ class ValidationEngine:
                  # Use PyTorch forward pass (no predict method)
                  # Returns (intensity, ambiguity)
                  with torch.no_grad():
-                     _, ambiguity = self.optical_layer(vec)
+                     ambiguity = self.optical_layer.get_ambiguity(res)
              except Exception:
                  ambiguity = 0.0
 
