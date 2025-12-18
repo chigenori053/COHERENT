@@ -17,13 +17,17 @@ def test_integrator_text_flow():
 def test_integrator_vision_flow():
     integrator = MultimodalIntegrator()
     # Mock vision encoder
-    integrator.vision_encoder.image_to_latex = MagicMock(return_value="x+y")
+    integrator.vision_encoder.encode = MagicMock(return_value=MagicMock(tensor='mocked'))
     # Mock text encoder
     integrator.text_encoder.encode = MagicMock(return_value=[0.5, 0.5])
     
     expr, vec = integrator.process_input("img.png", input_type="image")
     
-    assert expr == "x+y"
-    assert vec == [0.5, 0.5]
-    integrator.vision_encoder.image_to_latex.assert_called_with("img.png")
-    integrator.text_encoder.encode.assert_called_with("x+y")
+    
+    # Logic update: integrator with "image" input returns None expression unless vision encoder decodes text.
+    assert expr is None
+    # Check if vec is the mock object returned by vision encoder
+    assert vec.tensor == 'mocked'
+    integrator.vision_encoder.encode.assert_called_with("img.png")
+    # Text encoder is not called for pure image input in new flow
+

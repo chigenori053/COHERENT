@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from .config import FuzzyThresholdConfig
 from .encoder import ExpressionEncoder
 from .metric import SimilarityMetric
+from .optical_metric import OpticalSimilarityMetric
 from .types import FuzzyLabel, FuzzyResult, FuzzyScore, NormalizedExpr
 from coherent.engine.i18n import get_language_pack
 from coherent.engine.decision_theory import DecisionConfig, DecisionEngine, DecisionAction
@@ -22,7 +23,7 @@ from coherent.engine.symbolic_engine import SymbolicEngine
 @dataclass
 class FuzzyJudge:
     encoder: ExpressionEncoder
-    metric: SimilarityMetric
+    metric: SimilarityMetric | OpticalSimilarityMetric
     thresholds: FuzzyThresholdConfig | None = None
     decision_config: DecisionConfig | None = None
     symbolic_engine: SymbolicEngine | None = None

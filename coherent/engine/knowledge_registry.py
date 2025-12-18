@@ -71,6 +71,9 @@ class KnowledgeRegistry:
         # Index rules by ID (Initialize before custom loading)
         self.rules_by_id: Dict[str, KnowledgeNode] = {node.id: node for node in self._all_nodes}
         
+        # Index rules into Optical Memory
+        self._index_nodes(self._all_nodes)
+        
         # Load custom rules if path is provided
         if custom_rules_path:
             self.load_custom_rules(custom_rules_path)
@@ -108,12 +111,55 @@ class KnowledgeRegistry:
         for node in new_nodes:
             self.rules_by_id[node.id] = node
             
+        # Index new nodes into Optical Memory
+        self._index_nodes(new_nodes)
+
         # Update self.nodes (legacy access, if any)
         # Note: self.nodes was renamed to _all_nodes in __init__ but we should keep it for compatibility if needed, 
         # or just make self.nodes a property. 
         # For now, let's just make sure we populate it if the legacy code expects it. 
         # In __init__ we removed `self.nodes = ...` line, so let's alias it.
         self.nodes = self._all_nodes
+
+    def _index_nodes(self, nodes: List[KnowledgeNode]):
+        """Indexes knowledge nodes into the semantic memory store."""
+        if not nodes:
+            return
+            
+        try:
+            from coherent.memory.factory import get_vector_store, get_embedder
+            store = get_vector_store()
+            embedder = get_embedder()
+            
+            ids = []
+            vectors = []
+            metadatas = []
+            
+            for node in nodes:
+                # Construct semantic text
+                text = f"{node.description} {node.pattern_before} -> {node.pattern_after}"
+                if node.concept:
+                    text = f"{node.concept}: {text}"
+                    
+                vec = embedder.embed_text(text)
+                if not vec:
+                    continue
+                    
+                ids.append(node.id)
+                vectors.append(vec)
+                metadatas.append(node.to_metadata())
+                
+            if vectors:
+                store.add(
+                    collection_name="knowledge",
+                    vectors=vectors,
+                    metadatas=metadatas,
+                    ids=ids
+                )
+                self.logger.info(f"Indexed {len(vectors)} rules into Optical Memory.")
+                
+        except Exception as e:
+            self.logger.error(f"Failed to index rules: {e}")
 
     def _load_nodes_from_dir(self, dir_path: Path) -> List[KnowledgeNode]:
         """Recursive loader helper."""

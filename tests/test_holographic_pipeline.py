@@ -18,9 +18,9 @@ def test_holographic_tensor_properties():
     """Verify HolographicTensor behaves like a complex tensor."""
     t = torch.randn(10, dtype=torch.complex64)
     ht = HolographicTensor(t)
-    assert isinstance(ht, torch.Tensor)
-    assert ht.is_complex()
-    assert ht.dtype == torch.complex64
+    assert isinstance(ht, HolographicTensor)
+    assert isinstance(ht.tensor, torch.Tensor)
+    assert ht.tensor.dtype == torch.complex64
 
 def test_text_encoder_output():
     """Test Text Encoder produces correct shape HolographicTensor."""
@@ -31,9 +31,8 @@ def test_text_encoder_output():
     text = "Hello Holographic World"
     output = encoder.encode(text)
     
-    assert isinstance(output, torch.Tensor)
-    assert output.is_complex()
-    assert output.shape[0] == SpectrumConfig.DIMENSION
+    assert isinstance(output, HolographicTensor)
+    assert output.tensor.shape[0] == SpectrumConfig.DIMENSION
 
 def test_vision_encoder_output():
     """Test Vision Encoder logic."""
@@ -41,9 +40,9 @@ def test_vision_encoder_output():
     # Mocking image input with a path that doesn't exist returns zeros
     output = encoder.encode("non_existent_image.jpg")
     
-    assert isinstance(output, torch.Tensor)
-    assert output.is_complex()
-    assert output.shape[0] == SpectrumConfig.DIMENSION
+    assert isinstance(output, HolographicTensor)
+    assert output.tensor.is_complex()
+    assert output.tensor.shape[0] == SpectrumConfig.DIMENSION
 
 def test_audio_encoder_output():
     """Test Audio Encoder logic."""
@@ -52,9 +51,9 @@ def test_audio_encoder_output():
     waveform = torch.randn(16000)
     output = encoder.encode(waveform)
     
-    assert isinstance(output, torch.Tensor)
-    assert output.is_complex()
-    assert output.shape[0] == SpectrumConfig.DIMENSION
+    assert isinstance(output, HolographicTensor)
+    assert output.tensor.is_complex()
+    assert output.tensor.shape[0] == SpectrumConfig.DIMENSION
 
 def test_optical_interference_engine():
     """Test Optical Engine forward pass."""
@@ -94,7 +93,7 @@ def test_holographic_memory_storage_recall():
     # Check fidelity (should be close to original for single item)
     # Note: Phase filtering extraction multiplies by mask, so indices unmatched are zeroed.
     # Our signal is at index 0.
-    assert torch.abs(recovered[0] - signal[0]) < 1e-5
+    assert torch.abs(recovered.tensor[0] - signal[0]) < 1e-5
     
     # Store another orthogonal item with phase pi
     signal2 = torch.zeros(dim, dtype=torch.complex64)
@@ -112,8 +111,8 @@ def test_holographic_memory_storage_recall():
     # Angle at index 0 is 0. Angle at index 1 is pi.
     # Mask should keep index 0 and remove index 1.
     
-    assert torch.abs(recovered_1[0]) > 0.9 # Kept
-    assert torch.abs(recovered_1[1]) < 0.1 # Filtered out
+    assert torch.abs(recovered_1.tensor[0]) > 0.9 # Kept
+    assert torch.abs(recovered_1.tensor[1]) < 0.1 # Filtered out
 
 def test_orchestrator_integration():
     """Test full pipeline via Orchestrator."""

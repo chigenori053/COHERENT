@@ -4,11 +4,12 @@ from unittest.mock import MagicMock, patch
 from coherent.engine.reasoning.agent import ReasoningAgent
 
 # Patch where imported
-@patch("coherent.engine.reasoning.agent.ChromaVectorStore")
-@patch("coherent.engine.multimodal.integrator.TransformerEncoder") 
-def test_recall_first_behavior(MockEncoder, MockStore):
+# Patch where imported
+@patch("coherent.engine.reasoning.agent.get_vector_store")
+@patch("coherent.engine.multimodal.integrator.HolographicTextEncoder") 
+def test_recall_first_behavior(MockEncoder, MockGetStore):
     # Setup Mocks
-    mock_store_instance = MockStore.return_value
+    mock_store_instance = MockGetStore.return_value
     mock_store_instance.query.return_value = [] # Default empty
     
     mock_encoder_instance = MockEncoder.return_value

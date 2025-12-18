@@ -31,8 +31,8 @@ class TestLearningLoop:
         # 4. Verify effect
         # Check if weights changed (roughly) or at least training ran without error
         # Rules should be registered
-        assert "rule_gp" in engine.rule_weights
-        assert "rule_other" in engine.rule_weights
+        assert "rule_gp" in engine.rule_index_map
+        assert "rule_other" in engine.rule_index_map
         
         # Prediction check
         # rule_gp should be favored for "Parent" inputs slightly more than initialized?

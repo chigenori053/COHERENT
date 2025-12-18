@@ -66,6 +66,10 @@ class TestReasoningComponents(unittest.TestCase):
 
 class TestReasoningIntegration(unittest.TestCase):
     def setUp(self):
+        # Force fresh store instance (Optical)
+        import coherent.memory.factory as factory
+        factory._STORE_INSTANCE = None
+        
         self.sym_engine = SymbolicEngine()
         self.comp_engine = ComputationEngine(self.sym_engine)
         self.val_engine = ValidationEngine(self.comp_engine)
@@ -84,6 +88,7 @@ class TestReasoningIntegration(unittest.TestCase):
             knowledge_registry=self.registry
         )
         self.agent = ReasoningAgent(self.runtime)
+        print(f"DEBUG: Vector Store Type: {type(self.agent.experience_manager.vector_store)}")
 
     def test_solve_linear_equation_flow(self):
         # Integration test (same as reproduction)

@@ -1,10 +1,12 @@
-from typing import NewType
+from dataclasses import dataclass
 import torch
 
 # HolographicTensor: The fundamental unit of the MHCA.
 # It represents a complex-valued waveform (spectrum).
 # Shape: [Batch, FrequencyBins] or [Batch, Height, Width] (Complex)
-HolographicTensor = NewType('HolographicTensor', torch.Tensor)
+@dataclass
+class HolographicTensor:
+    tensor: torch.Tensor
 
 class SpectrumConfig:
     """Configuration for the frequency domain representations."""

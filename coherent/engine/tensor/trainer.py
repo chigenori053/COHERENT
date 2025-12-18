@@ -27,7 +27,13 @@ class TensorTrainer:
     def _prepare_rule_indices(self):
         """Builds index mapping for all registered rules."""
         # Ensure we know all rules currently in engine
-        rule_ids = sorted(list(self.engine.rule_weights.keys()))
+        # Optical Engine uses rule_index_map
+        if hasattr(self.engine, 'rule_index_map'):
+             rule_ids = sorted(list(self.engine.rule_index_map.keys()))
+        else:
+             # Fallback for legacy or mock
+             rule_ids = sorted(list(self.engine.rule_weights.keys()))
+             
         self.rule_id_to_idx = {r: i for i, r in enumerate(rule_ids)}
         self.idx_to_rule_id = {i: r for i, r in enumerate(rule_ids)}
 
@@ -75,16 +81,16 @@ class TensorTrainer:
                 
                 # Target
                 target_rule = item["rule"]
+                if target_rule not in self.rule_id_to_idx:
+                    continue # Should not happen if registered above
                 target_idx = self.rule_id_to_idx[target_rule]
                 target_tensor = torch.tensor([target_idx], dtype=torch.long)
                 
                 # Forward
                 # We need raw scores for all rules in fixed order
-                # predict_rules returns top-k strings, we need raw logits for CrossEntropy
                 logits = self._get_logits_for_all_rules(expr_tensor)
                 
                 # Loss
-                # logits: [1, NumRules], target: [1]
                 loss = nn.CrossEntropyLoss()(logits, target_tensor)
                 
                 
@@ -93,28 +99,34 @@ class TensorTrainer:
                 
                 total_loss += loss.item()
             
-            avg_loss = total_loss / len(dataset)
+            # avg_loss = total_loss / len(dataset)
             # print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.4f}")
 
     def _get_logits_for_all_rules(self, state_tensor: torch.Tensor) -> torch.Tensor:
         """
         Helper: compute scores for all rules in order of self.idx_to_rule_id.
         """
-        # Get state vector
-        # [Emb]
-        state_vector = self.engine(state_tensor)
+        # Optical Engine Forward: [Batch, Capacity] (Resonance Energy)
+        # We assume batch size 1 for training loop currently
+        if state_tensor.dim() == 1:
+            state_tensor = state_tensor.unsqueeze(0)
+            
+        resonance = self.engine(state_tensor) # [1, Capacity]
         
-        # Compute scores
-        # We want to enable gradient flow.
-        # Score = weight + ... (same as predict_rules but ordered)
+        # Map resonance to "logits" for the subset of registered rules
+        # Order must match idx_to_rule_id
         scores = []
         for i in range(len(self.idx_to_rule_id)):
             rid = self.idx_to_rule_id[i]
-            # Access parameter directly to keep graph
-            weight = self.engine.rule_weights[rid]
-            # In real model: dot product etc.
-            # score = f(state, rule)
-            score = weight # scalar
+            
+            if hasattr(self.engine, 'rule_index_map'):
+                mem_idx = self.engine.rule_index_map[rid]
+                # Resonance is magnitude squared (real).
+                score = resonance[0, mem_idx]
+            else:
+                 # Legacy
+                 score = self.engine.rule_weights[rid]
+                 
             scores.append(score)
             
-        return torch.cat(scores).unsqueeze(0) # [1, NumRules]
+        return torch.stack(scores).unsqueeze(0) # [1, NumRules]

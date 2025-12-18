@@ -26,13 +26,13 @@ class HolographicStorage:
             obj_spectrum: 1D HolographicTensor (complex)
             phase_key: Float angle in radians (e.g. 0 to 2pi) to shift the wave.
         """
-        if obj_spectrum.shape[0] != self.dimension:
-             raise ValueError(f"Dimension mismatch. Expected {self.dimension}, got {obj_spectrum.shape[0]}")
+        if obj_spectrum.tensor.shape[0] != self.dimension:
+             raise ValueError(f"Dimension mismatch. Expected {self.dimension}, got {obj_spectrum.tensor.shape[0]}")
              
         # Phase Modulation (Shift)
         # Multiply by e^(i * theta)
         phase_shifter = torch.exp(torch.tensor(1j * phase_key, dtype=torch.complex64))
-        modulated_wave = obj_spectrum * phase_shifter
+        modulated_wave = obj_spectrum.tensor * phase_shifter
         
         # Additive Storage (Interference/Superposition)
         self.superposition_wave += modulated_wave

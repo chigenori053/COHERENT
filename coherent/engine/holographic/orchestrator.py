@@ -74,7 +74,7 @@ class HolographicOrchestrator:
         # Stack inputs for parallel processing
         # holographic_inputs is List[HolographicTensor] where each is [Dim] (complex)
         # Stack to [Batch, Dim]
-        batch_input = torch.stack(holographic_inputs)
+        batch_input = torch.stack([h.tensor for h in holographic_inputs])
         
         # 2. Optical Interference
         # Calculate resonance with Long-Term Knowledge (Optical Memory)

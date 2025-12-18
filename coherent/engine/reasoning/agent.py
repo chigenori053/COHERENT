@@ -15,7 +15,8 @@ if TYPE_CHECKING:
 from ..multimodal.integrator import MultimodalIntegrator
 
 # [NEW] Import Memory Components
-from coherent.memory.vector_store import ChromaVectorStore
+# [NEW] Import Memory Components
+from coherent.memory.factory import get_vector_store
 from coherent.memory.ast_generalizer import ASTGeneralizer
 from coherent.memory.experience_manager import ExperienceManager
 import json
@@ -54,7 +55,7 @@ class ReasoningAgent:
         self.integrator = MultimodalIntegrator()
         
         # [NEW] Memory Core (Phase 3)
-        self.vector_store = ChromaVectorStore(persist_path="./brain_memory")
+        self.vector_store = get_vector_store()
         self.generalizer = ASTGeneralizer()
         self.experience_manager = ExperienceManager(self.vector_store) 
  
