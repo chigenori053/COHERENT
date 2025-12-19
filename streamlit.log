@@ -1,0 +1,12 @@
+
+  You can now view your Streamlit app in your browser.
+
+  Local URL: http://localhost:8501
+  Network URL: http://192.168.3.5:8501
+
+  For better performance, install the Watchdog module:
+
+  $ xcode-select --install
+  $ pip install watchdog
+            
+Failed to index rules: The expanded size of the tensor (1024) must match the existing size (384) at non-singleton dimension 1.  Target sizes: [57, 1024].  Tensor sizes: [57, 384]
