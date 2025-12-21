@@ -38,8 +38,14 @@ from coherent.engine.tensor.embeddings import EmbeddingRegistry
 from coherent.engine.reasoning.agent import ReasoningAgent
 
 # Language Processing
+# Language Processing
 from coherent.engine.language.semantic_parser import RuleBasedSemanticParser
 from coherent.engine.language.semantic_types import TaskType
+from coherent.engine.language.decomposer import Decomposer
+
+# Multimodal & UI
+from PIL import Image
+from coherent.engine.multimodal.integrator import MultimodalIntegrator
 
 # [NEW] Action Architecture
 from coherent.core.action import Action
@@ -217,132 +223,126 @@ with st.sidebar:
 tab_solver, tab_tester, tab_train = st.tabs(["🧩 Agent Solver", "✅ Script Tester", "🧠 Optical Training"])
 
 # --- TAB 1: Agent Solver (Step-by-Step) ---
+# --- TAB 1: Chat Solver (System 2) ---
 with tab_solver:
-    st.header("Step-by-Step Reasoning")
-    st.markdown("Solve problems using the **Reasoning Agent** (System 2) backed by **Optical Memory** (System 1).")
+    st.header("Coherent Reasoning Agent")
+    st.markdown("Interact with the **Reasoning LM** using natural language or images. Try 'Solve...' or verify 'A=B'.")
+
+    # Chat History
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+
+    # Display Chat
+    for msg in st.session_state.messages:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+            if "image" in msg:
+                st.image(msg["image"], width=200)
+
+    # Input Area
+    input_col1, input_col2 = st.columns([0.85, 0.15])
     
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        user_input = st.text_input("Enter Problem (Natural Language)", value="Solve (x - 2y)^2")
+    with input_col1:
+        prompt = st.chat_input("Ask a math question (e.g., 'Solve x^2-4=0') or verify a step ('(a+b)^2 = a^2+2ab+b^2')")
         
-        c_btn1, c_btn2 = st.columns(2)
-        with c_btn1:
-            start_btn = st.button("Start/Reset", type="primary")
-        with c_btn2:
-            step_btn = st.button("Next Step")
+    with input_col2:
+        uploaded_file = st.file_uploader("📷", type=["png", "jpg", "jpeg"], label_visibility="collapsed")
+
+    # Processing
+    if prompt or uploaded_file:
+        # User Message
+        user_content = prompt if prompt else "Analyze this image."
+        st.session_state.messages.append({"role": "user", "content": user_content})
+        
+        with st.chat_message("user"):
+            st.markdown(user_content)
+            if uploaded_file:
+                image = Image.open(uploaded_file)
+                st.image(image, width=200)
+                st.session_state.messages[-1]["image"] = image
+
+        # Assistant Response
+        with st.chat_message("assistant"):
+            st.markdown("Thinking...")
             
-        if start_btn:
-             # Reset Logic
-             st.session_state.tracer = Tracer() # Fresh Tracer
-             ep_id = st.session_state.tracer.start_episode(user_input)
-             
-             # Parse and Init State
-             try:
-                 ir = parser.parse(user_input)
-                 if ir.task == TaskType.SOLVE and ir.inputs:
-                     start_expr = ir.inputs[0].value
-                     st.session_state.lm_state = State(
-                        task_goal=ir.task,
-                        initial_inputs=ir.inputs,
-                        current_expression=start_expr
-                     )
-                     # Sync Runtime
-                     runtime.set(start_expr)
-                     st.toast(f"Episode Started: {ep_id}")
-                 else:
-                     st.error("Could not extract expression for SOLVE task.")
-                     st.session_state.lm_state = None
-             except Exception as e:
-                 st.error(f"Parse Error: {e}")
-                 st.session_state.lm_state = None
-             
-             # Rerun to update view
-             st.rerun()
-
-    with col2:
-        # NLP Understanding Display
-        if st.session_state.lm_state:
-             current_expr = st.session_state.lm_state.current_expression
-             status = st.session_state.lm_state.status
-             st.info(f"**Current State**: `{current_expr}`\n\n**Status**: `{status}`")
-        else:
-             st.caption("(Initialize to start)")
-             if user_input:
-                 ir = parser.parse(user_input)
-                 st.caption(f"Detected: {ir.task.name} / {ir.math_domain.name}")
-
-    # --- ACTION EXECUTION LOGIC ---
-    if step_btn and st.session_state.lm_state:
-        state = st.session_state.lm_state
-        
-        if state.status == "SOLVED":
-            st.warning("Problem is already solved!")
-        else:
-            with st.spinner("Thinking..."):
-                # 1. ACT
-                action = agent.act(state)
-                
-                # 2. EXECUTE
-                result = executor.execute(action, state)
-                
-                # 3. TRACE
-                st.session_state.tracer.log_step(state, action, result)
-                
-                if result.get("valid"):
-                    st.success(f"Action: {action.name} -> Valid")
-                else:
-                    st.warning(f"Action: {action.name} -> Invalid")
-
-            st.rerun()
-
-    # --- TRACER VISUALIZATION ---
-    if st.session_state.tracer._current_episode:
-        st.divider()
-        st.subheader("Episode Trace (Reasoning History)")
-        
-        steps = st.session_state.tracer._current_episode.steps
-        for i, step in enumerate(steps):
-            with st.container():
-                st.markdown(f"#### Step {i+1}")
-                c1, c2 = st.columns([2, 1])
-                
-                act_data = step.action
-                res_data = step.result
-                state_snap = step.state_snapshot
-                
-                with c1:
-                    # Before -> After
-                    st.caption("Transformation")
-                    before = state_snap.get('expression')
-                    # Result details usually have 'evaluated' or we check next step's state?
-                    # Result payload depends on executor.
-                    # Executor result for APPLY_RULE usually is runtime check structure.
+            # 1. Multimodal Integration
+            integrator = MultimodalIntegrator()
+            expression = None
+            if uploaded_file:
+                # currently just using the text if provided, or default
+                pass
+            
+            if prompt:
+                 expression = prompt
+            
+            if expression:
+                # 2. Decompose & Loop
+                try:
+                    # Initialize Tracer for this batch
+                    if "tracer" not in st.session_state:
+                         st.session_state.tracer = Tracer()
+                    st.session_state.tracer.start_episode(expression)
                     
-                    st.latex(formatter.format_expression(before))
-                    st.markdown("⬇️")
+                    decomposer = Decomposer()
+                    segments = decomposer.decompose(expression)
                     
-                    # If valid, the state updated. But step record stores snapshot BEFORE.
-                    # We can show the 'inputs.next_state' from action as expected
-                    target = act_data.get('inputs', {}).get('next_state', '???')
-                    st.latex(formatter.format_expression(target))
+                    if len(segments) > 1:
+                        st.caption(f"🧩 Decomposed into {len(segments)} segments: {segments}")
+                    
+                    for i, segment in enumerate(segments):
+                        st.markdown(f"**Segment {i+1}**: `{segment}`")
+                        
+                        # Parse
+                        ir = parser.parse(segment)
+                        
+                        if not ir.inputs:
+                            st.warning(f"Could not extract math from segment: {segment}")
+                            continue
+                            
+                        target_expr = ir.inputs[0].value
+                        
+                        # Create State (New state for each segment, but Runtime persists)
+                        state = State(
+                            task_goal=ir.task,
+                            initial_inputs=ir.inputs,
+                            current_expression=target_expr
+                        )
+                        
+                        # Agent Act
+                        action = agent.act(state)
+                        
+                        # Execute
+                        result = executor.execute(action, state)
+                        
+                        # Log & Render
+                        st.session_state.tracer.log_step(state, action, result)
+                        
+                        with st.expander(f"Step {i+1} Result: {action.name}", expanded=True):
+                            if "before" in result and "after" in result:
+                                st.latex(f"{result['before']} \\rightarrow {result['after']}")
+                            
+                            if result.get("valid"):
+                                st.success(f"✅ {action.inputs.get('explanation', 'Valid')}")
+                                if ir.task == TaskType.VERIFY:
+                                    st.caption("✨ Learned this verification!")
+                            else:
+                                msg = result.get('error', 'Unknown error')
+                                st.error(f"❌ {msg}")
+                                # Stop processing remaining segments on error?
+                                # For now, continue to see full output or break?
+                                # Better to break if it's a dependency chain.
+                                st.error("Stopping execution due to error.")
+                                break
+                                
+                    st.session_state.messages.append({"role": "assistant", "content": "Processed all segments."})
 
-                    explanation = act_data.get('inputs', {}).get('explanation', '')
-                    if explanation:
-                        st.caption(f"🗣️ {explanation}")
+                except Exception as e:
+                    st.error(f"Error processing request: {e}")
+                    st.session_state.messages.append({"role": "assistant", "content": f"Error: {e}"})
+            else:
+                 st.info("Please provide text input or wait for OCR implementation.")
 
-                with c2:
-                    st.markdown(f"**Action**: `{act_data.get('type')}`")
-                    st.markdown(f"**Name**: `{act_data.get('name')}`")
-                    st.markdown(f"**Confidence**: `{act_data.get('confidence', 1.0):.2f}`")
-                    
-                    status = "✅ Valid" if res_data.get('valid') else "❌ Invalid"
-                    st.markdown(f"**Result**: {status}")
-                    
-                    with st.expander("Evidence"):
-                        st.json(act_data.get('evidence', {}))
-                
-                st.divider()
+
 
     with st.expander("👁️ Optical Memory State", expanded=True):
         fig = render_optical_memory(agent)

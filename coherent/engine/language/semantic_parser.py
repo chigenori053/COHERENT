@@ -110,13 +110,17 @@ class RuleBasedSemanticParser(ISemanticParser):
                 if re.search(pattern, text_lower):
                     return task, 1.0 # High confidence on keyword match
 
-        # 2. Heuristic: If it looks like pure math (mostly numbers/symbols), assume SOLVE
+        # 2. Heuristic: If it looks like pure math (mostly numbers/symbols)
         # We exclude common non-math words if possible, but matching \w is risky.
         # Let's check if it contains ANY intent keywords first (handled above).
-        # If no intent keywords, and it has math symbols, assume SOLVE.
+        # If no intent keywords, and it has math symbols:
         
         # Check for presence of distinct math operators or equals to boost confidence
         if re.search(r'[=+\-*/^]', text):
+             if "=" in text:
+                 # If no explicit command but contains =, treat as Verification/Assertion
+                 # E.g., "(x-y)^2 = x^2 - 2xy + y^2"
+                 return TaskType.VERIFY, 0.9
              return TaskType.SOLVE, 0.8
 
         # Fallback default
