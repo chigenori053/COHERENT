@@ -1,4 +1,4 @@
-from demo.demo_cli import main as demo_main
+from coherent.apps.demo.demo_cli import main as demo_main
 
 
 def test_demo_cli_runs_scenario(capsys):

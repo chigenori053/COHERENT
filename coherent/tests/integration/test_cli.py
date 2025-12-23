@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from main import main
+from coherent.edu.cli.main import main
 from coherent.pro.cli import main as pro_main
 from coherent.edu.demo.edu_demo_runner import main as edu_demo_main
 
@@ -31,7 +31,7 @@ def test_cli_runs_inline_code(capsys):
 
 def test_cli_runs_file(capsys):
     capsys.readouterr()
-    sample_path = Path("coherent/edu/examples/pythagorean.coh")
+    sample_path = Path("coherent/core/edu/examples/pythagorean.coh")
     result = main(["--file", str(sample_path)])
     captured = capsys.readouterr()
     assert result == 0
