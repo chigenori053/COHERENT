@@ -5,6 +5,8 @@ import numpy as np
 from coherent.core.memory.vector_store import VectorStoreBase
 from coherent.core.optical.layer import OpticalInterferenceEngine
 from coherent.core.holographic.data_types import HolographicTensor
+from coherent.tools.library.crs_memory.atoms import MemoryAtom, ComplexVal
+
 
 class OpticalFrequencyStore(VectorStoreBase):
     """
@@ -41,16 +43,27 @@ class OpticalFrequencyStore(VectorStoreBase):
 
     def _encode_signal(self, vectors: List[List[float]]) -> torch.Tensor:
         """
-        Modulates real-valued vectors into complex holographic signals.
+        Modulates real-valued vectors into complex holographic signals using CRS MemoryAtom (FFT).
         """
-        tensor = torch.tensor(vectors, dtype=torch.float32)
+        complex_vectors = []
+        for i, vec in enumerate(vectors):
+            # Create transient atom to get spectral representation (FFT)
+            # Use dummy ID as this is just for encoding
+            atom = MemoryAtom.from_real_vector(vec, id=f"enc_{i}")
+            
+            # Extract complex spectrum
+            c_vals = [cv.to_complex() for cv in atom.repr]
+            complex_vectors.append(c_vals)
+            
+        # Convert to tensor
+        tensor = torch.tensor(complex_vectors, dtype=torch.cfloat)
         
-        # Normalize amplitude to unit sphere to ensure stable interference
+        # Normalize to unit sphere for stable optical interference
+        # Note: This changes the magnitude, but preserves the spectral pattern (phase relationships)
+        # which is key for holographic associative recall.
         tensor = torch.nn.functional.normalize(tensor, p=2, dim=1)
         
-        # Phase Encoding: simple amplitude embedding into complex plane for V1.
-        # Future: Use phase-encoding exp(i * vector) for better capacity.
-        return tensor.type(torch.cfloat)
+        return tensor
 
     def add(self, collection_name: str, vectors: List[List[float]], metadatas: List[Dict[str, Any]], ids: List[str]) -> None:
         """
