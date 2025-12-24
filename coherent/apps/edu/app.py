@@ -15,37 +15,37 @@ from pathlib import Path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 # Core Imports
-from coherent.engine.symbolic_engine import SymbolicEngine
-from coherent.engine.computation_engine import ComputationEngine
-from coherent.engine.validation_engine import ValidationEngine
-from coherent.engine.hint_engine import HintEngine, HintPersona
-from coherent.engine.core_runtime import CoreRuntime
-from coherent.engine.latex_formatter import LaTeXFormatter
-from coherent.engine.parser import Parser
-from coherent.engine.evaluator import Evaluator
-from coherent.engine.learning_logger import LearningLogger
-from coherent.engine.fuzzy.judge import FuzzyJudge
-from coherent.engine.fuzzy.encoder import ExpressionEncoder
-from coherent.engine.fuzzy.metric import SimilarityMetric
-from coherent.engine.unit_engine import get_common_units
-from coherent.engine.decision_theory import DecisionConfig
-from coherent.engine.knowledge_registry import KnowledgeRegistry
+from coherent.core.symbolic_engine import SymbolicEngine
+from coherent.core.computation_engine import ComputationEngine
+from coherent.core.validation_engine import ValidationEngine
+from coherent.core.hint_engine import HintEngine, HintPersona
+from coherent.core.core_runtime import CoreRuntime
+from coherent.core.latex_formatter import LaTeXFormatter
+from coherent.core.parser import Parser
+from coherent.core.evaluator import Evaluator
+from coherent.core.learning_logger import LearningLogger
+from coherent.core.fuzzy.judge import FuzzyJudge
+from coherent.core.fuzzy.encoder import ExpressionEncoder
+from coherent.core.fuzzy.metric import SimilarityMetric
+from coherent.core.unit_engine import get_common_units
+from coherent.core.decision_theory import DecisionConfig
+from coherent.core.knowledge_registry import KnowledgeRegistry
 
 # Reasoning & Memory Imports
-from coherent.engine.tensor.engine import TensorLogicEngine
-from coherent.engine.tensor.converter import TensorConverter
-from coherent.engine.tensor.embeddings import EmbeddingRegistry
-from coherent.engine.reasoning.agent import ReasoningAgent
+from coherent.core.tensor.engine import TensorLogicEngine
+from coherent.core.tensor.converter import TensorConverter
+from coherent.core.tensor.embeddings import EmbeddingRegistry
+from coherent.core.reasoning.agent import ReasoningAgent
 
 # Language Processing
 # Language Processing
-from coherent.engine.language.semantic_parser import RuleBasedSemanticParser
-from coherent.engine.language.semantic_types import TaskType
-from coherent.engine.language.decomposer import Decomposer
+from coherent.plugins.language.semantic_parser import RuleBasedSemanticParser
+from coherent.plugins.language.semantic_types import TaskType
+from coherent.plugins.language.decomposer import Decomposer
 
 # Multimodal & UI
 from PIL import Image
-from coherent.engine.multimodal.integrator import MultimodalIntegrator
+from coherent.core.multimodal.integrator import MultimodalIntegrator
 
 # [NEW] Action Architecture
 from coherent.core.action import Action
@@ -138,7 +138,7 @@ def get_system():
     )
     
     # 8. Utilities
-    from coherent.engine.classifier import ExpressionClassifier
+    from coherent.core.classifier import ExpressionClassifier
     classifier = ExpressionClassifier(sym_engine)
     formatter = LaTeXFormatter(sym_engine, classifier)
     

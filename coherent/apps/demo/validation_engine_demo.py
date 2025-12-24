@@ -1,9 +1,9 @@
 """Demo script for ValidationEngine."""
 
-from coherent.engine.computation_engine import ComputationEngine
-from coherent.engine.symbolic_engine import SymbolicEngine
-from coherent.engine.validation_engine import ValidationEngine
-from coherent.engine.exercise_spec import ExerciseSpec
+from coherent.core.computation_engine import ComputationEngine
+from coherent.core.symbolic_engine import SymbolicEngine
+from coherent.core.validation_engine import ValidationEngine
+from coherent.core.exercise_spec import ExerciseSpec
 
 
 def main():

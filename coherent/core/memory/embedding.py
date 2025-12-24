@@ -1,5 +1,5 @@
 """
-Embedding Engine for Coherent Memory.
+Embedding Engine for CausalScript Memory.
 """
 
 from abc import ABC, abstractmethod

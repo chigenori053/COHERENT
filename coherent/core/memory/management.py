@@ -5,7 +5,7 @@ Management utilities for Memory Module (Ingestion, Maintenance).
 from typing import List
 from .factory import get_vector_store, get_embedder
 from .schema import KnowledgeEntry
-from coherent.engine.knowledge_registry import KnowledgeRegistry
+from ..knowledge_registry import KnowledgeRegistry
 
 def ingest_all_rules(registry: KnowledgeRegistry, collection_name: str = "knowledge"):
     """

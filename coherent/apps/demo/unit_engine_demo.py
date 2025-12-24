@@ -15,8 +15,8 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from coherent.engine.symbolic_engine import SymbolicEngine
-from coherent.engine.unit_engine import UnitEngine
+from coherent.core.symbolic_engine import SymbolicEngine
+from coherent.core.unit_engine import UnitEngine
 
 
 def main():

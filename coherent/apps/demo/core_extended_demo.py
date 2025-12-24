@@ -10,12 +10,12 @@ Demonstrates the new Core Extended features:
 """
 
 from pathlib import Path
-from coherent.engine.symbolic_engine import SymbolicEngine
-from coherent.engine.computation_engine import ComputationEngine
-from coherent.engine.validation_engine import ValidationEngine
-from coherent.engine.hint_engine import HintEngine
-from coherent.engine.core_runtime import CoreRuntime
-from coherent.engine.exercise_spec import ExerciseSpec, load_exercise_spec
+from coherent.core.symbolic_engine import SymbolicEngine
+from coherent.core.computation_engine import ComputationEngine
+from coherent.core.validation_engine import ValidationEngine
+from coherent.core.hint_engine import HintEngine
+from coherent.core.core_runtime import CoreRuntime
+from coherent.core.exercise_spec import ExerciseSpec, load_exercise_spec
 
 
 def print_header(title: str):

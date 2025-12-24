@@ -14,7 +14,7 @@
 ## Structure
 ```
 coherent/
-  core/
+  Core/
   edu/
   pro/
     cli.py

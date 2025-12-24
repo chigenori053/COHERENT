@@ -2,7 +2,6 @@
 Factory methods for Memory Module components.
 """
 from .vector_store import VectorStoreBase, ChromaVectorStore
-from .optical_store import OpticalFrequencyStore
 from .embedding import SemanticEmbedder
 
 _STORE_INSTANCE = None
@@ -11,10 +10,7 @@ _EMBEDDER_INSTANCE = None
 def get_vector_store(persist_path: str = "./vector_db") -> VectorStoreBase:
     global _STORE_INSTANCE
     if _STORE_INSTANCE is None:
-        # _STORE_INSTANCE = ChromaVectorStore(persist_path=persist_path)
-        # Use Optical Backend
-        from coherent.engine.holographic.data_types import SpectrumConfig
-        _STORE_INSTANCE = OpticalFrequencyStore(vector_dim=SpectrumConfig.DIMENSION, capacity=1000) # Check vector_dim match with embedder
+        _STORE_INSTANCE = ChromaVectorStore(persist_path=persist_path)
     return _STORE_INSTANCE
 
 def get_embedder() -> SemanticEmbedder:

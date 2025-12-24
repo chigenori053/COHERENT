@@ -1,5 +1,5 @@
 import numpy as np
-from coherent.engine.ast_nodes import Expr, Add, Mul, Pow, Neg, Call, Div, RationalNode, Int, Rat, Sym
+from ..ast_nodes import Expr, Add, Mul, Pow, Neg, Call, Div, RationalNode, Int, Rat, Sym
 from typing import Union
 
 class FeatureExtractor:

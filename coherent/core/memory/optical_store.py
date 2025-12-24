@@ -2,10 +2,9 @@ from typing import List, Dict, Any, Optional
 import torch
 import torch.nn as nn
 import numpy as np
-from pathlib import Path
-from coherent.memory.vector_store import VectorStoreBase
-from coherent.optical.layer import OpticalInterferenceEngine
-from coherent.engine.holographic.data_types import HolographicTensor
+from coherent.core.memory.vector_store import VectorStoreBase
+from coherent.core.optical.layer import OpticalInterferenceEngine
+from coherent.core.holographic.data_types import HolographicTensor
 
 class OpticalFrequencyStore(VectorStoreBase):
     """
@@ -46,12 +45,6 @@ class OpticalFrequencyStore(VectorStoreBase):
         """
         tensor = torch.tensor(vectors, dtype=torch.float32)
         
-        if tensor.shape[1] < self.vector_dim:
-            padding = torch.zeros((tensor.shape[0], self.vector_dim - tensor.shape[1]))
-            tensor = torch.cat([tensor, padding], dim=1)
-        elif tensor.shape[1] > self.vector_dim:
-            tensor = tensor[:, :self.vector_dim]
-
         # Normalize amplitude to unit sphere to ensure stable interference
         tensor = torch.nn.functional.normalize(tensor, p=2, dim=1)
         
@@ -68,13 +61,7 @@ class OpticalFrequencyStore(VectorStoreBase):
             raise MemoryError(f"Optical memory capacity exceeded ({self.capacity}).")
 
         # 1. Modulate signals
-        if vectors and hasattr(vectors[0], 'tensor'):
-             # Handle list of HolographicTensors
-             signal = torch.stack([v.tensor for v in vectors])
-        elif isinstance(vectors, torch.Tensor):
-             signal = vectors
-        else:
-             signal = self._encode_signal(vectors)
+        signal = self._encode_signal(vectors)
         
         # 2. Write to Optical Layer (Flash Memory)
         with torch.no_grad():
@@ -98,12 +85,7 @@ class OpticalFrequencyStore(VectorStoreBase):
         Recall memories via Optical Resonance.
         """
         # 1. Modulate Query
-        if hasattr(query_vec, 'tensor'):
-            input_tensor = query_vec.tensor.unsqueeze(0)
-        elif isinstance(query_vec, torch.Tensor):
-            input_tensor = query_vec.unsqueeze(0) if query_vec.ndim == 1 else query_vec
-        else:
-            input_tensor = self._encode_signal([query_vec]) # [1, Dim]
+        input_tensor = self._encode_signal([query_vec]) # [1, Dim]
         
         # 2. Optical Interference (Forward Pass)
         # Returns resonance intensity [1, Capacity]
@@ -170,49 +152,7 @@ class OpticalFrequencyStore(VectorStoreBase):
                 # Zero out the physical memory
                 self.optical_layer.optical_memory.data[idx] = torch.zeros(self.vector_dim, dtype=torch.cfloat)
                 # Remove metadata ref
+                if idx in self.index_to_id:
+                    del self.index_to_id[idx]
                 if idx in self.index_to_metadata:
                     del self.index_to_metadata[idx]
-
-    def save(self, path: str) -> None:
-        """
-        Persist the optical memory and metadata to disk.
-        """
-        import json
-        import os
-        
-        path_obj = Path(path)
-        if not path_obj.parent.exists():
-            path_obj.parent.mkdir(parents=True, exist_ok=True)
-            
-        data = {
-            "optical_memory": self.optical_layer.optical_memory,
-            "index_to_id": self.index_to_id,
-            "index_to_metadata": self.index_to_metadata,
-            "current_count": self.current_count,
-            "config": {
-                "vector_dim": self.vector_dim,
-                "capacity": self.capacity
-            }
-        }
-        torch.save(data, path)
-
-    def load(self, path: str) -> None:
-        """
-        Load optical memory and metadata from disk.
-        """
-        import os
-        if not os.path.exists(path):
-            raise FileNotFoundError(f"Optical store not found at {path}")
-            
-        data = torch.load(path)
-        
-        # Restore configuration check (optional safety)
-        config = data.get("config", {})
-        if config.get("vector_dim") != self.vector_dim:
-             # Just warn or resize? For now assume strict match.
-             print(f"Warning: Loaded store dim {config.get('vector_dim')} != current {self.vector_dim}")
-             
-        self.optical_layer.optical_memory.data = data["optical_memory"].data
-        self.index_to_id = data["index_to_id"]
-        self.index_to_metadata = data["index_to_metadata"]
-        self.current_count = data["current_count"]

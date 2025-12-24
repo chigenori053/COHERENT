@@ -73,7 +73,7 @@ uv sync
 Interactive UI to visualize the reasoning process in real-time.
 
 ```bash
-uv run streamlit run ui/app.py
+uv run streamlit run coherent/apps/edu/app.py
 ```
 - **Agent Solver**: 自然言語で問題を解かせることができます。（例: "Solve x^2 - 4 = 0", "Factorize x^2 + 5x + 6"）
 - スクリーンショット通りに思考のステップ（Action）が表示されます。
@@ -87,7 +87,7 @@ uv run streamlit run ui/app.py
 You can also invoke the agent directly from scripts.
 
 ```python
-from ui.app import get_system
+from coherent.apps.edu.app import get_system
 from coherent.core.state import State
 from coherent.core.tracer import Tracer
 

@@ -11,8 +11,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from coherent.memory.management import ingest_all_rules
-from coherent.engine.knowledge_registry import KnowledgeRegistry
-from coherent.engine.symbolic_engine import SymbolicEngine
+from coherent.core.knowledge_registry import KnowledgeRegistry
+from coherent.core.symbolic_engine import SymbolicEngine
 from coherent.memory import get_vector_store
 
 def setup():

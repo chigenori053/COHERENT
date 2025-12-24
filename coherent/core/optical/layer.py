@@ -4,7 +4,7 @@ import numpy as np
 from typing import Tuple, Optional, Union
 import os
 
-from coherent.engine.holographic.data_types import HolographicTensor
+from coherent.core.holographic.data_types import HolographicTensor
 
 class OpticalInterferenceEngine(nn.Module):
     """
@@ -108,31 +108,4 @@ class OpticalInterferenceEngine(nn.Module):
 
     def save(self, path: str):
         torch.save(self.state_dict(), path)
-
-    def expand_memory(self, additional_capacity: int):
-        """
-        Dynamically expands the optical memory capacity.
-        """
-        if additional_capacity <= 0:
-            return
-            
-        new_capacity = self.memory_capacity + additional_capacity
-        # Initialize new memory with same dtype and device
-        new_memory = nn.Parameter(
-            torch.randn(
-                new_capacity, 
-                self.input_dim, 
-                dtype=self.optical_memory.dtype,
-                device=self.optical_memory.device
-            )
-        )
-        
-        # Copy existing memory
-        with torch.no_grad():
-            new_memory.data[:self.memory_capacity] = self.optical_memory.data
-            
-        self.optical_memory = new_memory
-        # Re-register hook
-        self.optical_memory.register_hook(lambda grad: grad.resolve_conj())
-        self.memory_capacity = new_capacity
 
