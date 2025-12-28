@@ -12,13 +12,13 @@ from contextlib import redirect_stdout
 from pathlib import Path
 
 # Add project root to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
 
 # Core Imports
 from coherent.core.symbolic_engine import SymbolicEngine
 from coherent.core.computation_engine import ComputationEngine
 from coherent.core.validation_engine import ValidationEngine
-from coherent.core.hint_engine import HintEngine, HintPersona
+from coherent.core.hint_engine import HintEngine
 from coherent.core.core_runtime import CoreRuntime
 from coherent.core.latex_formatter import LaTeXFormatter
 from coherent.core.parser import Parser
@@ -170,29 +170,54 @@ executor = system["executor"]
 
 # --- Helper Functions ---
 
-def render_optical_memory(agent):
-    """Visualizes the Optical Memory state as a heatmap."""
+def render_holographic_store(runtime):
+    """Visualizes the OpticalFrequencyStore holographic memory state."""
     try:
-        optical_mem = agent.trainer.model.optical_memory 
-        
-        if optical_mem is None:
+        # Access the optical layer of the Experience Manager
+        if not hasattr(runtime, 'optical_store') or not runtime.optical_store:
             return None
             
-        energy = torch.abs(optical_mem).detach().cpu().numpy()
+        store = runtime.optical_store
         
-        display_rows = min(50, energy.shape[0])
-        display_data = energy[:display_rows, :]
+        # Access internal optical memory tensor: [Capacity, Dim]
+        # It's complex-valued. We visualize magnitude (energy).
+        memory_tensor = store.optical_layer.optical_memory
         
-        fig, ax = plt.subplots(figsize=(10, 4))
-        cax = ax.imshow(display_data, aspect='auto', cmap='inferno', interpolation='nearest')
-        ax.set_title(f"Optical Memory State (Top {display_rows} Slots)")
-        ax.set_xlabel("Vector Dimension")
-        ax.set_ylabel("Memory Slot")
-        fig.colorbar(cax, orientation='vertical')
+        # Retrieve non-zero portion (active experiences)
+        # We use current_count, but show a bit of empty space too
+        count = store.current_count
+        limit = min(count + 10, memory_tensor.shape[0])
+        limit = min(limit, 100) # Max 100 rows for performance
+        
+        if limit == 0:
+            return None
+
+        # Extract magnitude (Abs of complex)
+        data = torch.abs(memory_tensor[:limit]).detach().cpu().numpy()
+        
+        # Create Heatmap
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5), gridspec_kw={'width_ratios': [3, 1]})
+        
+        # 1. Holographic Pattern (Magnitude)
+        cax = ax1.imshow(data, aspect='auto', cmap='magma', interpolation='nearest')
+        ax1.set_title(f"Holographic Memory State ({count} stored)")
+        ax1.set_xlabel("Frequency / Dimension")
+        ax1.set_ylabel("Experience Index")
+        fig.colorbar(cax, ax=ax1, orientation='vertical')
+        
+        # 2. Resonance Profile (Avg Energy per Slot)
+        # Showing how 'charged' each memory slot is
+        resonance = np.mean(data, axis=1)
+        ax2.barh(range(len(resonance)), resonance, color='cyan')
+        ax2.set_title("Energy Profile")
+        ax2.set_xlabel("Mean Amplitude")
+        ax2.set_ylim(ax1.get_ylim()) # Match Y-axis
+        ax2.invert_yaxis()
         
         return fig
+
     except Exception as e:
-        st.error(f"Visualization Error: {e}")
+        st.error(f"Holographic Viz Error: {e}")
         return None
 
 # --- UI Layout ---
@@ -265,18 +290,67 @@ with tab_solver:
         with st.chat_message("assistant"):
             st.markdown("Thinking...")
             
-            # 1. Multimodal Integration
-            integrator = MultimodalIntegrator()
-            expression = None
-            if uploaded_file:
-                # currently just using the text if provided, or default
-                pass
+            processed_via_nlp = False
             
-            if prompt:
-                 expression = prompt
+            # 1. Try NLP (Language Processing Capability)
+            if not uploaded_file:
+                try:
+                    nlp_result = runtime.process_natural_language(user_content)
+                    
+                    # Check for Clarification Request (Ambiguity)
+                    if "ambiguity_score" in nlp_result:
+                         st.warning(f"⚠️ {nlp_result.get('message', 'Ambiguous request')}")
+                         st.caption(f"Ambiguity Score: {nlp_result['ambiguity_score']:.2f}")
+                         # TODO: Show possible intents if available
+                         processed_via_nlp = True
+                         
+                    # Check for Error within NLP (e.g. unknown action, but not crash)
+                    elif "error" in nlp_result and nlp_result["error"]:
+                        # If NLP explicitly failed (e.g. empty expression), we might fallback 
+                        # OR just show error if it was a valid attempt.
+                        # For now, if "error" is "Unknown action", maybe fallback to Agent?
+                        if "Unknown action" in nlp_result["error"]:
+                            pass # Fallback to Agent
+                        else:
+                            st.error(f"NLP Error: {nlp_result['error']}")
+                            processed_via_nlp = True
+
+                    # Check for Success/Recall
+                    elif "result" in nlp_result or "valid" in nlp_result:
+                        if nlp_result.get("recalled"):
+                            st.info("🧠 Recalled from Optical Memory!")
+                            
+                        # Display Semantic IR if available
+                        if "sir" in nlp_result:
+                            with st.expander("Semantic IR", expanded=False):
+                                st.json(nlp_result["sir"])
+                        
+                        # Display Result
+                        if "result" in nlp_result:
+                            res = nlp_result["result"]
+                            st.success(f"**Result**: {res}")
+                            if "method" in nlp_result and nlp_result["method"]:
+                                st.caption(f"Method: {nlp_result['method']}")
+                        elif "valid" in nlp_result:
+                            is_valid = nlp_result["valid"]
+                            if is_valid:
+                                st.success("✅ Valid verification")
+                            else:
+                                st.error("❌ logical/mathematical mismatch")
+                                
+                        processed_via_nlp = True
+                        st.session_state.messages.append({"role": "assistant", "content": "Executed via Language Core."})
+
+                except Exception as e:
+                    # In case of crash in NLP, log and try fallback
+                    print(f"NLP Interface Error: {e}")
             
-            if expression:
-                # 2. Decompose & Loop
+            # 2. Fallback to Reasoning Agent (System 2 / Decomposer / Vision) if NLP didn't handle it
+            if not processed_via_nlp:
+                st.caption("Using Deep Reasoning Agent...")
+                
+                expression = user_content
+                # ... (Existing Agent Logic) ...
                 try:
                     # Initialize Tracer for this batch
                     if "tracer" not in st.session_state:
@@ -339,15 +413,15 @@ with tab_solver:
                 except Exception as e:
                     st.error(f"Error processing request: {e}")
                     st.session_state.messages.append({"role": "assistant", "content": f"Error: {e}"})
-            else:
-                 st.info("Please provide text input or wait for OCR implementation.")
 
 
 
-    with st.expander("👁️ Optical Memory State", expanded=True):
-        fig = render_optical_memory(agent)
+    with st.expander("👁️ Optical Memory State (Holographic Store)", expanded=True):
+        fig = render_holographic_store(runtime)
         if fig:
             st.pyplot(fig)
+        else:
+             st.caption("Memory is empty or not initialized.")
 
 
 # --- TAB 2: Script Tester (Legacy/Batch) ---

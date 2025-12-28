@@ -403,6 +403,14 @@ class SymbolicEngine:
                         internal1 = _sympy.Matrix(internal1)
                     except Exception:
                         pass
+                        
+                # Relational Handling (e.g. Eq)
+                # SymPy Equalities cannot be subtracted directly (TypeError).
+                # Convert Eq(A, B) -> A - B for equivalence check.
+                if hasattr(internal1, 'lhs') and hasattr(internal1, 'rhs'):
+                     internal1 = internal1.lhs - internal1.rhs
+                if hasattr(internal2, 'lhs') and hasattr(internal2, 'rhs'):
+                     internal2 = internal2.lhs - internal2.rhs
 
             diff = _sympy.simplify(internal1 - internal2)
             

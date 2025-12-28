@@ -186,6 +186,41 @@ class ReasoningAgent:
             
         return avg_loss
 
+    def act(self, state: Any) -> 'Action':
+        """
+        Adapter method for compatibility with App UI (ActionExecutor).
+        Converts State -> Think -> Hypothesis -> Action.
+        """
+        from ..action import Action
+        from ..action_types import ActionType
+        
+        # 1. Extract expression from State
+        expr = state.current_expression
+        
+        # 2. Think (Generate Hypothesis)
+        hypothesis = self.think(expr)
+        
+        if hypothesis:
+            # Map Hypothesis to Action
+            return Action(
+                type=ActionType.APPLY_RULE, # Default generic action mechanism
+                name=f"Apply {hypothesis.rule_id}",
+                inputs={
+                    "rule_id": hypothesis.rule_id, 
+                    "target_expr": hypothesis.next_expr,
+                    "explanation": hypothesis.explanation
+                },
+                confidence=hypothesis.score
+            )
+        else:
+            # Fallback / No Op
+            return Action(
+                type=ActionType.STOP,
+                name="No valid step found",
+                inputs={"explanation": "Could not find a valid reasoning step."},
+                confidence=0.0
+            )
+
     def _add_explanation(self, hypothesis: Hypothesis) -> None:
         """Generates a natural language explanation for the hypothesis."""
         rule_desc = hypothesis.metadata.get("rule_description", "Use a rule")

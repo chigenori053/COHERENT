@@ -23,6 +23,10 @@ from .category_identifier import CategoryIdentifier
 from .math_category import MathCategory
 from .renderers import RenderingEngine
 from coherent.core.errors import CausalScriptError, InvalidExprError, MissingProblemError
+from coherent.tools.language.parser import SemanticParser
+from coherent.tools.language.router import IntentRouter
+from coherent.tools.language.experience import ExperienceManager
+from coherent.core.memory.optical_store import OpticalFrequencyStore
 
 _EQUATION_SAMPLE_ASSIGNMENTS = [
     {"x": -2, "y": 1, "z": 3, "a": 1},
@@ -102,6 +106,16 @@ class CoreRuntime(Engine):
         
         # Initialize Rendering Engine
         self.rendering_engine = RenderingEngine(computation_engine.symbolic_engine)
+
+        # Initialize Language Processing
+        self.semantic_parser = SemanticParser()
+        self.intent_router = IntentRouter()
+
+        # Initialize Optical Memory (Lazy or Configurable)
+        # For Phase 2, we initialize it if possible, but keep it optional
+        # In production, this might come from config
+        self.optical_store = OpticalFrequencyStore(capacity=1000) # Smaller capacity for V1
+        self.experience_manager = ExperienceManager(self.optical_store)
 
     def get_extension(self, name: str) -> Any:
         """
@@ -793,6 +807,109 @@ class CoreRuntime(Engine):
 
     def matrix_eigenvectors(self, matrix: list[list[float]]) -> list[list[float]]:
         return self.linear_algebra.eigenvectors(matrix)
+
+    def process_natural_language(self, text: str) -> Dict[str, Any]:
+        """
+        Process natural language input and execute the corresponding action.
+        
+        Args:
+            text: Natural language string.
+            
+        Returns:
+            Result of the execution.
+        """
+        # 1. Recall (Recall-First)
+        recalled = self.experience_manager.recall_experience(text)
+        if recalled:
+            print(f"DEBUG: Recalled experience: {recalled.id} with confidence {recalled.confidence}")
+            
+            # Check for ambiguity (Phase 3)
+            ambiguity = 0.0
+            if isinstance(recalled.result, dict):
+                ambiguity = recalled.result.get('ambiguity_score', 0.0)
+                
+            if ambiguity > 0.4: # Threshold for high ambiguity
+                # If memory is ambiguous, we TRUST THE PARSER (SYSTEM 2) instead of asking for clarification immediately.
+                # Use Case: User enters a new variation of an existing query. Memory is confused, but Parser might be clear.
+                print(f"DEBUG: Recall Ambiguous (score: {ambiguity:.2f}). Fallback to Parsing.")
+                # We do NOT return here. We let it fall through to Step 2 (Parse).
+                pass 
+            else:
+                 # Confidence is high and ambiguity is low -> Return Cached Result
+                 return {**recalled.result, "recalled": True}
+
+        # 2. Parse
+        sir = self.semantic_parser.parse(text)
+        
+        # 3. Route
+        route_decision = self.intent_router.route(sir)
+        
+        # 4. Execute
+        action = route_decision.get("action")
+        params = route_decision.get("params", {})
+        
+        print(f"DEBUG: NLP Action: {action}, Params: {params}")
+        
+        execution_result = None
+        
+        if action == "compute":
+            expression = params.get("expression")
+            if not expression:
+                return {"error": "Missing expression"}
+            
+            # Helper to handle equations
+            if "=" in expression:
+                eq_sides = self._extract_equation_sides(expression)
+                if eq_sides:
+                    lhs, rhs = eq_sides
+                    try:
+                        if hasattr(self.computation_engine.symbolic_engine, 'solve'):
+                             result = self.computation_engine.symbolic_engine.solve(f"{lhs} - ({rhs})")
+                             execution_result = {"result": result, "sir": sir.model_dump(), "method": "solve"}
+                    except Exception:
+                        pass
+                    
+                    if not execution_result:
+                        expression = f"Eq({lhs}, {rhs})"
+
+            if not execution_result:
+                # We treat this as evaluation
+                result = self.evaluate(expression)
+                execution_result = {"result": result, "sir": sir.model_dump()}
+            
+        elif action == "verify":
+            expression = params.get("expression")
+            if not expression:
+                return {"error": "Missing expression"}
+            
+            is_valid = False
+            try:
+                eq_sides = self._extract_equation_sides(expression)
+                if eq_sides:
+                    lhs, rhs = eq_sides
+                    is_valid = self.computation_engine.symbolic_engine.is_equiv(lhs, rhs)
+                else:
+                    pass
+            except Exception:
+                pass
+                
+            execution_result = {"valid": is_valid, "sir": sir.model_dump()}
+            
+        elif action == "explain":
+            execution_result = {"explanation_needed": True, "context": params.get("context"), "sir": sir.model_dump()}
+            
+        elif action == "error":
+            return {"error": route_decision.get("message")}
+            
+        else:
+            return {"error": "Unknown action", "decision": route_decision}
+            
+        # 5. Store Experience (Learning)
+        if execution_result and "error" not in execution_result:
+            # We only store successful computations/verifications for now
+            self.experience_manager.store_experience(text, sir, execution_result)
+            
+        return execution_result
 
     def finalize(self, expr: str | None) -> dict:
         """
