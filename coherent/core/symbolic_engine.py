@@ -351,8 +351,16 @@ class SymbolicEngine:
             
             # Normalize power symbol
             expr = expr.replace("^", "**")
-            return _sympy.sympify(expr, locals=local_dict)
+            
+            # Use parse_expr with transformations for robust parsing (implicit multiplication, etc.)
+            from sympy.parsing.sympy_parser import (
+                parse_expr, standard_transformations, implicit_multiplication_application, convert_xor
+            )
+            transformations = standard_transformations + (implicit_multiplication_application, convert_xor)
+            
+            return parse_expr(expr, local_dict=local_dict, transformations=transformations)
         except Exception as exc:  # pragma: no cover - SymPy provides details.
+            # Fallback for very simple cases or re-raise
             raise InvalidExprError(str(exc)) from exc
 
     def set_context(self, categories: List[MathCategory]) -> None:

@@ -45,22 +45,34 @@ class SemanticParser:
         """
         lower_text = text.lower()
         
-        # Pattern 1: Explicit "Solve [expression]"
+        # Pattern 4: Explicit Compute Commands (Simplify, Factor, etc.)
+        compute_keywords = ["simplify", "factor", "expand", "differentiate", "derive", "integrate", "limit", "solve", "calculate"]
+        
+        # Check if text starts with any of these
+        for kw in compute_keywords:
+            if lower_text.startswith(kw):
+                expression = self._extract_expression_preserving_case(text, kw)
+                if expression:
+                     # Infer domain slightly better
+                     domain = self._infer_domain(lower_text)
+                     return SemanticIR(
+                        task=IntentType.SOLVE,
+                        math_domain=domain,
+                        goal=Goal(type=GoalType.FINAL_VALUE),
+                        inputs=[InputItem(type=InputItemType.EXPRESSION, value=expression)],
+                        language_meta=LanguageMeta(original_language="en")
+                    )
+
+        # Pattern 1: Explicit "Solve [expression]" (Legacy fallback/aliases)
         # Matches: "solve x + 2 = 4", "solve for x: 2x = 10"
-        if "solve" in lower_text or "calculate" in lower_text:
-            expression = self._extract_expression(text, ["solve", "calculate", "for", ":"])
-            if expression:
-                return SemanticIR(
-                    task=IntentType.SOLVE,
-                    math_domain=self._infer_domain(expression),
-                    goal=Goal(type=GoalType.FINAL_VALUE),
-                    inputs=[InputItem(type=InputItemType.EQUATION, value=expression)],
-                    language_meta=LanguageMeta(original_language="en") # Todo: Detect language
-                )
+        # Covered by Pattern 4 largely, but keeping for specific structure like "solve for"
+        if "solve for" in lower_text:
+             # handle "solve for x: ..."
+             pass # Let Pattern 4 handle simple "solve" or fallback
 
         # Pattern 2: Explicit "Verify [expression]"
         if "verify" in lower_text or "check" in lower_text:
-            expression = self._extract_expression(text, ["verify", "check", "that", ":"])
+            expression = self._extract_expression_preserving_case(text, "verify" if "verify" in lower_text else "check")
             if expression:
                 return SemanticIR(
                     task=IntentType.VERIFY,
@@ -83,21 +95,35 @@ class SemanticParser:
 
         return None
 
+    def _extract_expression_preserving_case(self, text: str, keyword: str) -> Optional[str]:
+        """
+        Extracts expression by removing the keyword from the start, preserving original case.
+        Handles optional delimiters like ':', 'that', 'for x'.
+        """
+        # Simple extraction: Remove keyword (case-insensitive match at start)
+        lower_text = text.lower()
+        keyword = keyword.lower()
+        
+        if lower_text.startswith(keyword):
+            remaining = text[len(keyword):].strip()
+            
+            # Remove optional separator ':'
+            if remaining.startswith(":"):
+                remaining = remaining[1:].strip()
+                
+            return remaining
+            
+        return None
+        
     def _extract_expression(self, text: str, keywords: List[str]) -> Optional[str]:
         """
-        Simple heuristic to strip keywords and return the rest as expression.
+        Legacy extractor (deprecated for new logic, but kept for compatibility if needed or removed).
+        Redefined to use new logic for first match.
         """
-        # Very naive implementation for Phase 1
-        lower_text = text.lower()
-        
-        # Sort keywords by length desc to remove longest first
-        sorted_keywords = sorted(keywords, key=len, reverse=True)
-        
-        cleaned = lower_text
-        for kw in sorted_keywords:
-            cleaned = cleaned.replace(kw, "")
-            
-        return cleaned.strip()
+        for kw in keywords:
+            if text.lower().startswith(kw):
+                return self._extract_expression_preserving_case(text, kw)
+        return text # fallback
 
     def _infer_domain(self, expression: str) -> MathDomain:
         """
