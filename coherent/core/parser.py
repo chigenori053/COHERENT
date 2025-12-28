@@ -238,8 +238,18 @@ class Parser:
                 mode = mode_match.group(2)
                 content = rhs
             elif re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", possible_lhs):
-                name = possible_lhs
-                content = rhs
+                # Heuristic: If LHS is lowercase, assume it's a variable in an equation (e.g. y = ...), not a Problem Name.
+                # Problem Names usually start with Uppercase or are descriptive.
+                # Exception: If RHS is also an equation, then LHS is definitely a name (Name = y = x).
+                # But here RHS has no top-level '=' (split ensured it).
+                
+                if possible_lhs[0].islower():
+                     # Treat as Equation: y = 5x - 20 -> Eq(y, 5x - 20)
+                     # Do NOT extract name.
+                     pass 
+                else:
+                    name = possible_lhs
+                    content = rhs
 
         expr = self._normalize_expr(content)
         # If content still has '=', it's an equation, not an assignment
