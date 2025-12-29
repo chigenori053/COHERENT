@@ -35,6 +35,7 @@ class EncodeEndEvent(TraceEvent):
 class RecallItem(BaseModel):
     mem_id: str
     resonance: float
+    phase: Optional[str] = "Phase 1"
 
 class RecallTopKEvent(TraceEvent):
     event_type: Literal["RECALL_TOPK"] = "RECALL_TOPK"

@@ -18,6 +18,9 @@ dependencies = [
     "numpy>=2.3.4",
     "matplotlib>=3.10.8",
     "pillow>=12.0.0",
+    "plotly>=5.0.0",
+    "kaleido>=0.2.1",
+    "opencv-python>=4.8.0",
 ]
 [project.scripts]
 coherent = "coherent.cli.main:main"

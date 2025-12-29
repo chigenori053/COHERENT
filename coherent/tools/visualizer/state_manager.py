@@ -18,6 +18,9 @@ class VisualizerState:
     # 3D Activation (Z-axis)
     memory_activation: Dict[str, float] = field(default_factory=dict)
     
+    # Phase Tracking
+    memory_phase: Dict[str, str] = field(default_factory=dict)
+    
     last_event_seq: int = -1
 
 class StateManager:
@@ -90,6 +93,8 @@ class StateManager:
             self._assign_coords_if_needed(item.mem_id)
             # Z = resonance
             self.state.memory_activation[item.mem_id] = item.resonance
+            if item.phase:
+                self.state.memory_phase[item.mem_id] = item.phase
 
     def _update_interference_signal(self, event: InterferenceTopKEvent):
         # Spec 3.2.5: Reshape interference tensor to 32x32

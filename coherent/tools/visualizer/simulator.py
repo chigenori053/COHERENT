@@ -62,8 +62,8 @@ class TraceSimulator:
 
         # 4. RECALL_TOPK
         topk = [
-             RecallItem(mem_id=f"m-{self.rng.integers(100, 999)}", resonance=0.9),
-             RecallItem(mem_id=f"m-{self.rng.integers(100, 999)}", resonance=0.6)
+             RecallItem(mem_id=f"m-{self.rng.integers(100, 999)}", resonance=0.9, phase=self.rng.choice(["Phase 1", "Phase 2", "Phase 3"])),
+             RecallItem(mem_id=f"m-{self.rng.integers(100, 999)}", resonance=0.6, phase=self.rng.choice(["Phase 1", "Phase 2", "Phase 3"]))
         ]
         yield RecallTopKEvent(
             **self._next_header("RECALL_TOPK"),
