@@ -10,6 +10,7 @@ from ..hologram.variant_link import VariantLink
 from .layers import ProcessingResult
 from .store import AcceptStore, ReviewStore, RejectStore
 from .router import MemoryRouter
+from ..logging.decision_log import DecisionLog
 
 class MemorySpace:
     def __init__(self, 
@@ -33,15 +34,28 @@ class MemorySpace:
         
         self.logger = logging.getLogger(__name__)
 
-    def store(self, raw_data: Any, context_obs: Observation) -> ProcessingResult:
+    def store(self, raw_data: Any, context_obs: Observation, forced_action: Optional[Action] = None) -> ProcessingResult:
         """
         Main entry point to store new information.
+        If forced_action is provided (e.g. from CommitController), it overrides internal optimization.
         """
         # 0. Encode
         hologram = self.encoder.encode(raw_data)
         
         # 1. Optimize / Decide
-        action, decision_log = self.optimizer.process(hologram, context_obs)
+        if forced_action:
+            action = forced_action
+            # Create a dummy or partial log for the forced action
+            # Ideally we still run process() to get the log but ignore the action?
+            # For efficiency and authority, we just log the override.
+            decision_log = DecisionLog(
+                observation=context_obs,
+                state_distribution=None, # Not computed
+                expected_utility=None,   # Not computed
+                action=action
+            )
+        else:
+            action, decision_log = self.optimizer.process(hologram, context_obs)
         
         # 2. Prepare Result
         # Note: In a real system, we'd handle ID generation and linking details here or in the Router.
