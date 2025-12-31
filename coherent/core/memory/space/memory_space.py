@@ -8,6 +8,8 @@ from ..hologram.encoder import HolographicEncoder
 from ..hologram.merge import SoftMerger
 from ..hologram.variant_link import VariantLink
 from .layers import ProcessingResult
+from .store import AcceptStore, ReviewStore, RejectStore
+from .router import MemoryRouter
 
 class MemorySpace:
     def __init__(self, 
@@ -18,9 +20,16 @@ class MemorySpace:
         self.merger = merger
         self.encoder = encoder
         
-        # Storage simulation
-        self.storage: Dict[str, Any] = {}
-        self.links: List[VariantLink] = []
+        # Sub-Area Architecture
+        self.accept_store = AcceptStore()
+        self.review_store = ReviewStore()
+        self.reject_store = RejectStore()
+        
+        self.router = MemoryRouter(
+            self.accept_store, 
+            self.review_store, 
+            self.reject_store
+        )
         
         self.logger = logging.getLogger(__name__)
 
@@ -34,64 +43,46 @@ class MemorySpace:
         # 1. Optimize / Decide
         action, decision_log = self.optimizer.process(hologram, context_obs)
         
-        # 2. Execute Action
-        result = self._execute_action(action, hologram, decision_log)
+        # 2. Prepare Result
+        # Note: In a real system, we'd handle ID generation and linking details here or in the Router.
+        # For now, we generate a ref ID to track it.
+        hologram_ref = str(id(hologram))
+        if action == Action.REVIEW:
+            hologram_ref = "REVIEW_" + hologram_ref
+            
+        success = action != Action.REJECT
+        
+        result = ProcessingResult(
+            action=action,
+            log=decision_log,
+            hologram_ref=hologram_ref,
+            message=f"Action {action.value} executed via Router.",
+            is_success=success
+        )
+        
+        # 3. Route (Execute Action)
+        self.router.route(result, hologram)
         
         return result
 
-    def _execute_action(self, action: Action, hologram: Any, log: Any) -> ProcessingResult:
-        hologram_ref = None
-        msg = ""
-        success = True
-
-        if action == Action.STORE_NEW:
-            # Generate ID
-            hid = str(id(hologram)) # Simple ID generation
-            self.storage[hid] = hologram
-            hologram_ref = hid
-            msg = "Stored as new unique memory."
-
-        elif action == Action.MERGE_SOFT:
-            # Requires target. 
-            # In real flow, Optimizer would return target in Decision.
-            # Assuming we had a target from observation.
-            # For this MVP structure, we simulate merging with a placeholder if context missing.
-            msg = "Merged with existing memory (simulated)."
-            # Implementation would go here:
-            # target = ...
-            # merged = self.merger.merge(target, hologram)
-            # self.storage[target_id] = merged
+    def retrieve(self, query_obs: Observation, context: Optional[str] = None) -> Any:
+        """
+        Retrieves memory.
+        Guard-1: Resonance Isolation - By default only searches AcceptStore.
+        Guard-4: Review Recall Restriction - Handled by ReviewStore.recall() check.
+        """
+        # Primary source: AcceptStore
+        results = {}
+        accept_res = self.accept_store.recall(query_obs, context)
+        if isinstance(accept_res, dict):
+            results.update(accept_res)
             
-        elif action == Action.VARIANT_LINK:
-            # Assume target from context
-            msg = "Linked as variant."
-            # Implementation:
-            # link = VariantLink.create(primary, hologram)
-            # self.links.append(link)
-            # self.storage[link.variant_id] = hologram
-
-        elif action == Action.REVIEW:
-            # Store in 'Review' buffer or tag it
-            hid = "REVIEW_" + str(id(hologram))
-            self.storage[hid] = hologram
-            msg = "Flagged for review."
+        # Optional: Check ReviewStore if context allows
+        if context in ReviewStore.ALLOWED_CONTEXTS:
+            review_res = self.review_store.recall(query_obs, context)
+            if isinstance(review_res, dict):
+                results.update(review_res) # Or keep separate depending on API needs
+                
+        # RejectStore is implicitly ignored / Guard-5
         
-        elif action == Action.ABSORB:
-             msg = "Absorbed into existing memory (redundant)."
-             # No new storage
-        
-        elif action == Action.REJECT:
-             msg = "Rejected (noise/harmful)."
-             success = False
-
-        return ProcessingResult(
-            action=action,
-            log=log,
-            hologram_ref=hologram_ref,
-            message=msg,
-            is_success=success
-        )
-
-    def retrieve(self, query_obs: Observation) -> Any:
-        # Placeholder for retrieval logic
-        pass
+        return results
