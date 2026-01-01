@@ -18,6 +18,19 @@ class UtilityState:
     expected_utility: float = 0.0
 
 @dataclass
+class Hypothesis:
+    """
+    Represents a proposed reasoning step (candidate).
+    """
+    id: str
+    rule_id: str
+    current_expr: str
+    next_expr: str
+    metadata: Dict[str, Any] = field(default_factory=dict)
+    score: float = 0.0
+    explanation: Optional[str] = None
+
+@dataclass
 class ThoughtBranch:
     # Identity
     branch_id: int

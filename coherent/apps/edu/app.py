@@ -12,7 +12,9 @@ from contextlib import redirect_stdout
 from pathlib import Path
 
 # Add project root to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
+# Add project root to path
+# Use insert(0) to ensure local code takes precedence over installed packages
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
 
 # Core Imports
 from coherent.core.symbolic_engine import SymbolicEngine
