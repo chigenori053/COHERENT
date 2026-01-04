@@ -128,4 +128,10 @@ def generate_visualizations(log_dir="experimental/dhm_generation/logs"):
     print(f"Plots saved to {plot_dir}")
 
 if __name__ == "__main__":
-    generate_visualizations()
+    import sys
+    log_dir = "experimental/dhm_generation/logs"
+    if len(sys.argv) > 1:
+        log_dir = sys.argv[1]
+    
+    print(f"Visualizing logs from: {log_dir}")
+    generate_visualizations(log_dir)

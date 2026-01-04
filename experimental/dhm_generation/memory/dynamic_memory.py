@@ -9,11 +9,17 @@ from typing import Dict, List, Optional
 from .attribute_hologram import HolographicEncoder, get_attributes_for_symbol
 
 class DynamicHolographicMemory:
-    def __init__(self, encoder: HolographicEncoder):
+    def __init__(self, encoder: HolographicEncoder, attribute_lookup_fn=None):
         self.encoder = encoder
         # The core memory storage: Maps attribute_name -> Holographic Vector
         self._memory_space: Dict[str, np.ndarray] = {}
-        self._is_sealed = False  # If true, prevents adding new attributes (optional safety)
+        self._is_sealed = False
+        
+        # Default to alphabet mapping if not provided
+        if attribute_lookup_fn is None:
+            self.attribute_lookup_fn = get_attributes_for_symbol
+        else:
+            self.attribute_lookup_fn = attribute_lookup_fn
 
     def encode_and_store_attribute(self, attribute_name: str) -> None:
         """Generates and stores the hologram for a single attribute."""
@@ -44,7 +50,7 @@ class DynamicHolographicMemory:
         
         H_0 = Normalize( ⊙ H_attr )
         """
-        attributes = get_attributes_for_symbol(symbol)
+        attributes = self.attribute_lookup_fn(symbol)
         vectors = [self.get_attribute_vector(attr) for attr in attributes]
         
         # Use the encoder's binding logic (Hadamard product + Normalize)
