@@ -59,3 +59,7 @@ class DynamicHolographicMemory(HolographicMemoryBase):
         """Retrieve n most recent items (LIFO)."""
         # deque is right-ended (newest at end)
         return list(reversed(self._storage))[:n]
+
+    def clear(self):
+        """Clear all items from dynamic memory."""
+        self._storage.clear()

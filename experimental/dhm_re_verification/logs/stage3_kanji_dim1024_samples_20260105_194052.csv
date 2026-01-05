@@ -1,0 +1,1 @@
+stage_id,sample_id,input_sequence,predicted_sequence,is_exact_match,margin,memory_layer,conflict_flag,vector_dimension

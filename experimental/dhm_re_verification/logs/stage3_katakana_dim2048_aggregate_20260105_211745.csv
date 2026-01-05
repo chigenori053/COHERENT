@@ -1,0 +1,2 @@
+stage_id,vector_dimension,num_samples,exact_match_rate,static_rate,dynamic_rate,causal_rate,false_static_count,avg_margin,min_margin
+stage3_katakana_dim2048,2048,46,1.0000,1.0000,0.0000,0.0000,0,1.0000,1.0000

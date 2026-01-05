@@ -9,7 +9,9 @@ import numpy as np
 from typing import Optional, Dict, Any, List, Tuple
 from .dynamic import DynamicHolographicMemory
 from .static import StaticHolographicMemory
-from .causal import CausalHolographicMemory
+from .dynamic import DynamicHolographicMemory
+from .static import StaticHolographicMemory
+from .causal import CausalHolographicMemory, DecisionState, Action
 
 class MemoryOrchestrator:
     def __init__(self, 
@@ -32,20 +34,49 @@ class MemoryOrchestrator:
         # 1. Dynamic Storage
         self.dynamic.add(state, metadata)
         
-        # 2. Promotion Logic (Simplified)
-        # In a real loop, this checks stability over time.
-        # Here, we check if the input ALREADY resonates with Static (Recognition)
-        # or if it's a candidate for new Static entry (Learning).
-        # For this refactor, we focus on the structure existence.
+        # 2. Causal Decision (Replaces Simplified Promotion)
+        # Gather metrics for Decision State
         
-        # Check if already known in Static
-        results = self.static.query(state, top_k=1)
-        if results and results[0][1] >= self.promotion_threshold:
-            # Recognized!
-            pass 
-        else:
-            # Not recognized. If this were a learning agent, we'd check stability.
-            # For now, explicit promotion is assumed to be external (or via specific method).
+        # Check recognition in Static
+        static_res = self.static.query(state, top_k=2)
+        top_score = static_res[0][1] if static_res else 0.0
+        second_score = static_res[1][1] if len(static_res) > 1 else 0.0
+        margin = top_score - second_score
+        
+        # Entropy Estimate: For now, we can use 1 - max_resonance as a proxy for "uncertainty/entropy"
+        # High resonance -> Low entropy/uncertainty.
+        entropy_est = 1.0 - top_score
+        
+        # Repetition: In a real system, Dynamic tracks this. Here we default to 1 for single-shot.
+        repetition = 1 
+        
+        decision_state = DecisionState(
+            resonance_score=top_score,
+            margin=margin,
+            repetition_count=repetition,
+            entropy_estimate=entropy_est,
+            memory_origin="Dynamic",
+            historical_conflict_rate=0.0 # Placeholder
+        )
+        
+        action = self.causal.evaluate_decision(decision_state)
+        
+        if action == Action.PROMOTE:
+            # Execute Promotion
+            self.promote_to_static(state, metadata)
+            # print(f">> DECISION: PROMOTE (Score={top_score:.2f})")
+            
+        elif action == Action.RETAIN:
+            # Stay in Dynamic (Already done in step 1)
+            pass
+            
+        elif action == Action.SUPPRESS:
+            # Remove from Dynamic? Or just tag as suppressed?
+            # For now, do nothing (Dynamic is FIFO)
+            pass
+            
+        elif action == Action.DEFER_REVIEW:
+            # Log for review
             pass
 
     def promote_to_static(self, state: np.ndarray, metadata: Dict[str, Any]) -> bool:
@@ -71,7 +102,11 @@ class MemoryOrchestrator:
         dynamic_res = self.dynamic.query(query_state, top_k=1)
         
         return {
+            "dynamic": dynamic_res[0] if dynamic_res else None,
             "static": static_res[0] if static_res else None,
-            "causal": causal_res[0] if causal_res else None,
-            "dynamic": dynamic_res[0] if dynamic_res else None
+            "causal": causal_res[0] if causal_res else None
         }
+
+    def reset_dynamic(self):
+        """Reset the dynamic memory layer."""
+        self.dynamic.clear()
