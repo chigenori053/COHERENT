@@ -80,11 +80,31 @@ class MemoryOrchestrator:
             pass
 
     def promote_to_static(self, state: np.ndarray, metadata: Dict[str, Any]) -> bool:
-        """Explicitly promote a state to Static Memory."""
-        # Sanity check: Does it conflict?
-        # TODO: checking conflict
-        self.static.add(state, metadata)
-        return True
+        """
+        Explicitly promote a state to Static Memory.
+        Integrates with Evaluation System (Spec v1.0).
+        """
+        # Extract signals (if available, else default to trusted)
+        val_signal = metadata.get('validation_confidence', 1.0)
+        gen_score = metadata.get('generalization_score', 1.0)
+        
+        # Evaluate Experience
+        profile = self.static.evaluate_experience(state, val_signal, gen_score)
+        
+        # Check Update Rules
+        decision = self.static.check_update_rules(profile)
+        
+        if decision == 'STORE':
+            self.static.add(state, metadata, profile)
+            return True
+        elif decision == 'MERGE':
+            # For Key-Value static memory, MERGE implies update/overwrite or fusion.
+            # v1: Overwrite with new profile
+            self.static.add(state, metadata, profile)
+            return True
+        else:
+            # IGNORE / REJECT
+            return False
 
     def register_transition(self, source_state: np.ndarray, target_state: np.ndarray) -> None:
         """Register a transition in Causal Memory."""

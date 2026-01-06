@@ -12,6 +12,7 @@ from typing import List, Tuple, Any, Dict, Optional
 from enum import Enum, auto
 from dataclasses import dataclass, field
 from .base import HolographicMemoryBase
+from .evaluation import CausalEvaluationProfile
 
 class Action(Enum):
     PROMOTE = auto()
@@ -113,19 +114,88 @@ class CausalHolographicMemory(HolographicMemoryBase):
     def add(self, state: np.ndarray, metadata: Dict[str, Any] = None) -> None:
         raise NotImplementedError("Use evaluate_decision() or add_transition()")
 
-    def add_transition(self, source: np.ndarray, target: np.ndarray, context: np.ndarray = None) -> None:
+    def add_transition(self, source: np.ndarray, target: np.ndarray, context: np.ndarray = None, profile: CausalEvaluationProfile = None) -> None:
+        """
+        Register a transition.
+        Stored Entry: { 'source': vec, 'target': vec, 'context': vec, 'profile': profile }
+        """
+        if profile is None:
+            profile = CausalEvaluationProfile(1.0, 1.0, 0.1, 1.0) # Default robust
+
         entry = {
             'source': self.normalize(source),
             'target': self.normalize(target),
-            'context': self.normalize(context) if context is not None else None
+            'context': self.normalize(context) if context is not None else None,
+            'profile': profile
         }
         self._transitions.append(entry)
 
+    def evaluate_relation(self,
+                        failure_rate: float,
+                        decision_entropy: float,
+                        entropy_delta: float,
+                        counterfactual_failure: float) -> CausalEvaluationProfile:
+        """
+        Evaluate a causal relation.
+        Calculates Cs, Cd, Ce, Cr.
+        """
+        # C_s: Causal Stability = 1 - failure_rate
+        c_s = 1.0 - failure_rate
+        
+        # C_d: Decision Consistency = 1 - H(A). 
+        # Provided decision_entropy is H(A)
+        c_d = 1.0 - decision_entropy
+        
+        # C_e: Entropy Reduction = delta
+        c_e = entropy_delta
+        
+        # C_r: Counterfactual Robustness = 1 - failure_rate(counterfactual)
+        c_r = 1.0 - counterfactual_failure
+        
+        return CausalEvaluationProfile(c_s, c_d, c_e, c_r)
+
+    def check_update_rules(self, profile: CausalEvaluationProfile) -> str:
+        """
+        Returns 'STORE', 'DEACTIVATE', 'REMOVE', 'IGNORE'.
+        Spec 5.4.
+        """
+        # Thresholds
+        TH_Cs = 0.8
+        TH_Cd = 0.7
+        
+        # Store if: C_s > θ_Cs ∧ C_d > θ_Cd ∧ C_e > 0
+        if (profile.causal_stability > TH_Cs and 
+            profile.decision_consistency > TH_Cd and 
+            profile.entropy_reduction > 0):
+            return 'STORE'
+            
+        # Deactivate if: C_r decreases persistently (Simplification: if C_r is low)
+        if profile.counterfactual_robustness < 0.5:
+            return 'DEACTIVATE'
+            
+        # Remove if: C_e ≈ 0
+        if abs(profile.entropy_reduction) < 0.01:
+            return 'REMOVE'
+            
+        return 'IGNORE'
+
     def query(self, query_vector: np.ndarray, top_k: int = 1) -> List[Tuple[Any, float]]:
+        """
+        Query Pattern: Given Source (query_vector), predict Target.
+        Returns: List[(TargetVector, ResonanceWithSource)]
+        """
         query_vector = self.normalize(query_vector)
         results = []
+        
         for entry in self._transitions:
+            # Measure resonance with Source (+ Context if applicable)
+            # For v1, simple Source matching
             score = self.compute_resonance(query_vector, entry['source'])
+            
+            # Use profile to filter or weigh? Spec doesn't strictly say, but implies trusted relations guide decisions.
+            # We return raw resonance for now.
+            
             results.append((entry['target'], score))
+            
         results.sort(key=lambda x: x[1], reverse=True)
         return results[:top_k]
