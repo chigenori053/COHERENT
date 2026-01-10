@@ -12,17 +12,20 @@ from .static import StaticHolographicMemory
 from .dynamic import DynamicHolographicMemory
 from .static import StaticHolographicMemory
 from .causal import CausalHolographicMemory, DecisionState, Action
+from ....experimental.sandbox import Sandbox
 
 class MemoryOrchestrator:
     def __init__(self, 
                  dynamic: DynamicHolographicMemory,
                  static: StaticHolographicMemory,
                  causal: CausalHolographicMemory,
-                 promotion_threshold: float = 0.85):
+                 promotion_threshold: float = 0.85,
+                 sandbox: Optional[Sandbox] = None):
         self.dynamic = dynamic
         self.static = static
         self.causal = causal
         self.promotion_threshold = promotion_threshold
+        self.sandbox = sandbox
 
     def process_input(self, state: np.ndarray, metadata: Dict[str, Any] = None) -> None:
         """
@@ -60,6 +63,11 @@ class MemoryOrchestrator:
         )
         
         action = self.causal.evaluate_decision(decision_state)
+        
+        # [Sandbox] Non-invasive capture
+        if self.sandbox:
+            self.sandbox.capture_input(state, metadata)
+            self.sandbox.capture_decision(decision_state, action, metadata)
         
         if action == Action.PROMOTE:
             # Execute Promotion
