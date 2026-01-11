@@ -5,19 +5,16 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from .computation_engine import ComputationEngine
-from .exercise_spec import ExerciseSpec
-from .errors import InvalidExprError, EvaluationError
-from .fuzzy.judge import FuzzyJudge
-from .causal.causal_engine import CausalEngine
-from .decision_theory import DecisionEngine, DecisionAction
-from .fuzzy.judge import FuzzyJudge
-from .causal.causal_engine import CausalEngine
-from .decision_theory import DecisionEngine, DecisionAction
-from .fuzzy.types import FuzzyLabel
-from .knowledge_registry import KnowledgeRegistry
-from .optical.vectorizer import FeatureExtractor
-from .optical.layer import OpticalInterferenceEngine
+from coherent.core.computation_engine import ComputationEngine
+from coherent.core.exercise_spec import ExerciseSpec
+from coherent.core.errors import InvalidExprError, EvaluationError
+from coherent.core.fuzzy.judge import FuzzyJudge
+from coherent.core.causal.causal_engine import CausalEngine
+from coherent.core.decision_theory import DecisionEngine, DecisionAction
+from coherent.core.fuzzy.types import FuzzyLabel
+from coherent.core.knowledge_registry import KnowledgeRegistry
+from coherent.core.optical.vectorizer import FeatureExtractor
+from coherent.core.optical.layer import OpticalInterferenceEngine
 import numpy as np
 
 
@@ -179,7 +176,7 @@ class ValidationEngine:
                  return False
 
         if not hasattr(self, 'optical_validator'):
-             from .optical.validator import OpticalValidator
+             from coherent.core.optical.validator import OpticalValidator
              self.optical_validator = OpticalValidator()
 
         # Execute Parallel Validation

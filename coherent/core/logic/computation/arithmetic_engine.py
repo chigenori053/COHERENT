@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Dict, List
 
-from . import ast_nodes as ast
+from coherent.core import ast_nodes as ast
 
 class ArithmeticEngine:
     """Handles symbolic manipulation of arithmetic expressions."""

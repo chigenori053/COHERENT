@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Any
-from coherent.core.holographic.data_types import HolographicTensor
+from coherent.core.cortex.memory.data_types import HolographicTensor
 
 class IHolographicEncoder(ABC):
     """

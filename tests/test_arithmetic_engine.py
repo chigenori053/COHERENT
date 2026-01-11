@@ -1,5 +1,5 @@
 import pytest
-from coherent.core.arithmetic_engine import ArithmeticEngine
+from coherent.core.logic.computation.arithmetic_engine import ArithmeticEngine
 from coherent.core import ast_nodes as ast
 
 def test_normalize_simple_addition():

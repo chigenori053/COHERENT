@@ -4,11 +4,11 @@ Tests for Holographic Memory Architecture (3-Layer)
 
 import unittest
 import numpy as np
-from coherent.core.memory.holographic.encoder import HolographicEncoder
-from coherent.core.memory.holographic.dynamic import DynamicHolographicMemory
-from coherent.core.memory.holographic.static import StaticHolographicMemory
-from coherent.core.memory.holographic.causal import CausalHolographicMemory
-from coherent.core.memory.holographic.orchestrator import MemoryOrchestrator
+from coherent.core.cortex.memory.encoder import HolographicEncoder
+from coherent.core.cortex.memory.dynamic import DynamicHolographicMemory
+from coherent.core.cortex.memory.static import StaticHolographicMemory
+from coherent.core.cortex.memory.causal import CausalHolographicMemory
+from coherent.core.cortex.memory.orchestrator import MemoryOrchestrator
 
 class TestHolographicMemory(unittest.TestCase):
     def setUp(self):

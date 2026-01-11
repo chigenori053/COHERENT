@@ -1,6 +1,6 @@
 from enum import Enum
 from typing import List, Optional, Any, Dict, Union
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 class IntentType(str, Enum):
     SOLVE = "solve"
@@ -61,5 +61,4 @@ class SemanticIR(BaseModel):
     explanation_level: int = 0  # 0: minimal, 1: standard, 2: detailed
     language_meta: LanguageMeta = Field(default_factory=LanguageMeta)
     
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)

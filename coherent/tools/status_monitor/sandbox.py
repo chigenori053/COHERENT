@@ -6,7 +6,16 @@ from typing import Any, Dict, Tuple
 import numpy as np
 
 from .manager import StatusManager
-from coherent.plugins.vision.base import VisionEmbedding
+from .manager import StatusManager
+from typing import NamedTuple
+
+class VisionEmbedding(NamedTuple):
+    """Mock Embedding for Sandbox."""
+    holographic_vector: np.ndarray
+    dimension: int
+    energy: float
+    vision_meta: Dict[str, Any]
+
 # In a real setup, we might import the actual Optical Engine, 
 # but we must ensure we don't accidentally write to it.
 # For P0, we define the Interface and a Mock/Safe Wrapper.

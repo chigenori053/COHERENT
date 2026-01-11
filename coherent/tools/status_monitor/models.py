@@ -36,7 +36,7 @@ class SystemMode(BaseModel):
 
 class SystemStatus(BaseModel):
     schema_version: str = "coherent.status.v1"
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     system_id: str
     mode: SystemMode
 
@@ -48,7 +48,7 @@ class EventSeverity(str, Enum):
 class SystemEvent(BaseModel):
     schema_version: str = "coherent.event.v1"
     event_id: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     type: str # e.g. STATE_ENTER, LEARNING_HALTED
     severity: EventSeverity
     component: str
