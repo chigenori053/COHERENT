@@ -1,0 +1,27 @@
+{
+  "run_id": "RUN_1768052885",
+  "metrics": {
+    "C1_JP": {
+      "baseline_accuracy": 1.0,
+      "prefix_recall": 1.0,
+      "fusion_recall": 1.0
+    },
+    "C2_EN": {
+      "baseline_accuracy": 1.0,
+      "prefix_recall": 1.0,
+      "fusion_recall": 1.0
+    },
+    "C3_MixedA": {
+      "baseline_accuracy": 1.0,
+      "prefix_recall": 1.0,
+      "fusion_recall": 1.0
+    },
+    "C4_MixedB_TaskB": {
+      "extract_accuracy": 1.0
+    }
+  },
+  "degradation": {
+    "baseline_accuracy": 0.0,
+    "prefix_recall": 0.0
+  }
+}

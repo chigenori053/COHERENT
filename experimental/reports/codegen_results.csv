@@ -1,0 +1,13 @@
+semantic_id,input_text,language,concepts,structure_match,result,failure_code
+CS-01,repeat the process until a condition is met,procedural_python,"['CONDITION', 'ITERATION']",1.0,PASS,None
+CS-01,repeat the process until a condition is met,procedural_java,"['CONDITION', 'ITERATION']",1.0,PASS,None
+CS-01,repeat the process until a condition is met,functional_haskell,"['CONDITION', 'ITERATION']",1.0,PASS,None
+CS-02,accumulate values while checking a constraint,procedural_python,"['CONDITION', 'ITERATION', 'STATE']",1.0,PASS,None
+CS-02,accumulate values while checking a constraint,procedural_java,"['CONDITION', 'ITERATION', 'STATE']",1.0,PASS,None
+CS-02,accumulate values while checking a constraint,functional_haskell,"['CONDITION', 'ITERATION', 'STATE']",1.0,PASS,None
+CS-03,just update the state value,procedural_python,['STATE'],0.0,FAIL,STRUCT_FAIL
+CS-03,just update the state value,procedural_java,['STATE'],0.16666666666666663,FAIL,STRUCT_FAIL
+CS-03,just update the state value,functional_haskell,['STATE'],0.25,FAIL,STRUCT_FAIL
+CS-04,loop forever,procedural_python,['ITERATION'],0.5,FAIL,STRUCT_FAIL
+CS-04,loop forever,procedural_java,['ITERATION'],0.5,FAIL,STRUCT_FAIL
+CS-04,loop forever,functional_haskell,['ITERATION'],1.0,PASS,None

@@ -1,0 +1,32 @@
+[
+  {
+    "spec": "procedural_python",
+    "code": "while (x < 10):\n    x = x + 1\n    if (x >= 10):\n        break",
+    "validation": {
+      "language": "procedural_python",
+      "structure_match": 1.0,
+      "missing_elements": [],
+      "result": "PASS"
+    }
+  },
+  {
+    "spec": "procedural_java",
+    "code": "while (x < 10){\n    x = x + 1;\n    if (x >= 10){\n        break;\n    }\n}",
+    "validation": {
+      "language": "procedural_java",
+      "structure_match": 1.0,
+      "missing_elements": [],
+      "result": "PASS"
+    }
+  },
+  {
+    "spec": "functional_haskell",
+    "code": "loop_fn state = if (x < 10) then\n  -- Body Execution\n  loop_fn (next_state)\nelse\n  state -- Exit",
+    "validation": {
+      "language": "functional_haskell",
+      "structure_match": 1.0,
+      "missing_elements": [],
+      "result": "PASS"
+    }
+  }
+]

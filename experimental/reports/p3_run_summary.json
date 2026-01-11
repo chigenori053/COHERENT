@@ -1,0 +1,28 @@
+{
+  "runs": [
+    {
+      "condition": "C1_JP_ONLY",
+      "A_recall": 1.0,
+      "B_cycle": 1.0,
+      "C_composition": 1.0
+    },
+    {
+      "condition": "C2_EN_ONLY",
+      "A_recall": 1.0,
+      "B_cycle": 1.0,
+      "C_composition": 0
+    },
+    {
+      "condition": "C3_MIXED_A",
+      "A_recall": 1.0,
+      "B_cycle": 1.0,
+      "C_composition": 1.0
+    },
+    {
+      "condition": "C4_MIXED_B",
+      "A_recall": 1.0,
+      "B_cycle": 1.0,
+      "C_composition": 1.0
+    }
+  ]
+}

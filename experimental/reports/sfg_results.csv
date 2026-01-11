@@ -1,0 +1,11 @@
+id,level,input_constraints,features_extracted,recalled_structure,generated_formula,resonance,judgment
+L1-01,L1,y is proportional to x,proportional,Proportional,y = k * x,0.34966458794732086,PASS
+L1-02,L1,y represents the rate of change of x,change,Derivative,dy/dx = k,0.32663629964595553,PASS
+L1-03,L1,y decreases when x increases inversely,,,No features found,0.0,FAIL
+L1-04,L1,the total of x and y is conserved,total conserved,Conservation,x + y = C,0.5063312479315477,PASS
+L1-05,L1,y accumulates change of x over time,change accumulates,Derivative,dy/dx = k,0.24769666235099097,FAIL
+L2-01,L2,y increases when x increases | y is proportional to x,proportional,Proportional,y = k * x,0.34966458794732086,PASS
+L2-02,L2,y is the derivative of x | the rate is constant,derivative,Derivative,dy/dx = k,0.3044782243420792,PASS
+L2-03,L2,y is inversely proportional to x,proportional,Proportional,y = k * x,0.34966458794732086,FAIL
+L3-01,L3,initial value of y is zero | y is proportional to x,proportional,Proportional,y = k * x,0.34966458794732086,PASS
+L3-02,L3,y represents slope | slope is constant,slope,Derivative,dy/dx = k,0.30917509826984935,PASS
