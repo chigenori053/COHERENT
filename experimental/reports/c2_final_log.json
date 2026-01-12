@@ -1,0 +1,437 @@
+[
+  {
+    "test_id": "C2-F1-01",
+    "step": 1,
+    "input_text": "A = B",
+    "recall_candidates": [],
+    "resonance_scores": {
+      "pos": 0.0,
+      "neg": 0.0
+    },
+    "decision": "REVIEW",
+    "confidence": 0.0,
+    "memory_update": true,
+    "termination_reason": "CONTINUE"
+  },
+  {
+    "test_id": "C2-F1-01",
+    "step": 2,
+    "input_text": "B = C",
+    "recall_candidates": [
+      "{'id': 'C2-F1-01_s1', 'text': 'A = B'}"
+    ],
+    "resonance_scores": {
+      "pos": 0.005589985134109008,
+      "neg": 0.06995974226968174
+    },
+    "decision": "REVIEW",
+    "confidence": 0.06995974226968174,
+    "memory_update": true,
+    "termination_reason": "CONTINUE"
+  },
+  {
+    "test_id": "C2-F1-01",
+    "step": 1,
+    "input_text": "A = B",
+    "recall_candidates": [],
+    "resonance_scores": {
+      "pos": 0.0,
+      "neg": 0.0
+    },
+    "decision": "REVIEW",
+    "confidence": 0.0,
+    "memory_update": true,
+    "termination_reason": "CONTINUE"
+  },
+  {
+    "test_id": "C2-F1-01",
+    "step": 2,
+    "input_text": "B = C",
+    "recall_candidates": [
+      "{'id': 'C2-F1-01_s1', 'text': 'A = B'}"
+    ],
+    "resonance_scores": {
+      "pos": 0.005589985134109008,
+      "neg": 0.06995974226968174
+    },
+    "decision": "REVIEW",
+    "confidence": 0.06995974226968174,
+    "memory_update": true,
+    "termination_reason": "CONTINUE"
+  },
+  {
+    "test_id": "C2-F1-01",
+    "step": 3,
+    "input_text": "A = C",
+    "recall_candidates": [
+      "{'id': 'C2-F1-01_s1', 'text': 'A = B'}",
+      "{'id': 'C2-F1-01_s2', 'text': 'B = C'}"
+    ],
+    "resonance_scores": {
+      "pos": 0.024469001433302433,
+      "neg": 0.05355829190198352
+    },
+    "decision": "REVIEW",
+    "confidence": 0.05355829190198352,
+    "memory_update": false,
+    "termination_reason": "REVIEW_STOP"
+  },
+  {
+    "test_id": "C2-F1-02",
+    "step": 1,
+    "input_text": "X = Y + 1",
+    "recall_candidates": [],
+    "resonance_scores": {
+      "pos": 0.0,
+      "neg": 0.0
+    },
+    "decision": "REVIEW",
+    "confidence": 0.0,
+    "memory_update": true,
+    "termination_reason": "CONTINUE"
+  },
+  {
+    "test_id": "C2-F1-02",
+    "step": 2,
+    "input_text": "Y = Z",
+    "recall_candidates": [
+      "{'id': 'C2-F1-02_s1', 'text': 'X = Y + 1'}"
+    ],
+    "resonance_scores": {
+      "pos": 0.018738061482719344,
+      "neg": 0.00861173010307002
+    },
+    "decision": "REVIEW",
+    "confidence": 0.018738061482719344,
+    "memory_update": true,
+    "termination_reason": "CONTINUE"
+  },
+  {
+    "test_id": "C2-F1-02",
+    "step": 3,
+    "input_text": "X = Z",
+    "recall_candidates": [
+      "{'id': 'C2-F1-02_s2', 'text': 'Y = Z'}",
+      "{'id': 'C2-F1-02_s1', 'text': 'X = Y + 1'}"
+    ],
+    "resonance_scores": {
+      "pos": 0.01662239027899137,
+      "neg": 0.038627980905375475
+    },
+    "decision": "REVIEW",
+    "confidence": 0.038627980905375475,
+    "memory_update": false,
+    "termination_reason": "REVIEW_STOP"
+  },
+  {
+    "test_id": "C2-F1-03",
+    "step": 1,
+    "input_text": "M = N",
+    "recall_candidates": [],
+    "resonance_scores": {
+      "pos": 0.0,
+      "neg": 0.0
+    },
+    "decision": "REVIEW",
+    "confidence": 0.0,
+    "memory_update": true,
+    "termination_reason": "CONTINUE"
+  },
+  {
+    "test_id": "C2-F1-03",
+    "step": 2,
+    "input_text": "M != N",
+    "recall_candidates": [
+      "{'id': 'C2-F1-03_s1', 'text': 'M = N'}"
+    ],
+    "resonance_scores": {
+      "pos": 0.0012113427499733723,
+      "neg": 1.0
+    },
+    "decision": "REJECT",
+    "confidence": 1.0,
+    "memory_update": false,
+    "termination_reason": "ERROR"
+  },
+  {
+    "test_id": "C2-F1-03",
+    "step": 3,
+    "input_text": "M = N",
+    "recall_candidates": [
+      "{'id': 'C2-F1-03_s1', 'text': 'M = N'}"
+    ],
+    "resonance_scores": {
+      "pos": 1.0,
+      "neg": 0.0012113427499733723
+    },
+    "decision": "ACCEPT",
+    "confidence": 1.0,
+    "memory_update": false,
+    "termination_reason": "SOLVED"
+  },
+  {
+    "test_id": "C2-F1-04",
+    "step": 1,
+    "input_text": "A = B",
+    "recall_candidates": [],
+    "resonance_scores": {
+      "pos": 0.0,
+      "neg": 0.0
+    },
+    "decision": "REVIEW",
+    "confidence": 0.0,
+    "memory_update": true,
+    "termination_reason": "CONTINUE"
+  },
+  {
+    "test_id": "C2-F1-04",
+    "step": 2,
+    "input_text": "B = C",
+    "recall_candidates": [
+      "{'id': 'C2-F1-04_s1', 'text': 'A = B'}"
+    ],
+    "resonance_scores": {
+      "pos": 0.005589985134109008,
+      "neg": 0.06995974226968174
+    },
+    "decision": "REVIEW",
+    "confidence": 0.06995974226968174,
+    "memory_update": true,
+    "termination_reason": "CONTINUE"
+  },
+  {
+    "test_id": "C2-F1-04",
+    "step": 3,
+    "input_text": "A = C",
+    "recall_candidates": [
+      "{'id': 'C2-F1-04_s1', 'text': 'A = B'}",
+      "{'id': 'C2-F1-04_s2', 'text': 'B = C'}"
+    ],
+    "resonance_scores": {
+      "pos": 0.024469001433302433,
+      "neg": 0.05355829190198352
+    },
+    "decision": "REVIEW",
+    "confidence": 0.05355829190198352,
+    "memory_update": false,
+    "termination_reason": "REVIEW_STOP"
+  },
+  {
+    "test_id": "C2-F1-04",
+    "step": 4,
+    "input_text": "C = D + 1",
+    "recall_candidates": [
+      "{'id': 'C2-F1-04_s2', 'text': 'B = C'}",
+      "{'id': 'C2-F1-04_s1', 'text': 'A = B'}"
+    ],
+    "resonance_scores": {
+      "pos": 0.031689408955656855,
+      "neg": 0.013447820545446241
+    },
+    "decision": "REVIEW",
+    "confidence": 0.031689408955656855,
+    "memory_update": true,
+    "termination_reason": "CONTINUE"
+  },
+  {
+    "test_id": "C2-F1-04",
+    "step": 5,
+    "input_text": "A = D",
+    "recall_candidates": [
+      "{'id': 'C2-F1-04_s2', 'text': 'B = C'}",
+      "{'id': 'C2-F1-04_s1', 'text': 'A = B'}",
+      "{'id': 'C2-F1-04_s4', 'text': 'C = D + 1'}"
+    ],
+    "resonance_scores": {
+      "pos": 0.03993466436251276,
+      "neg": 0.0510813390944584
+    },
+    "decision": "REVIEW",
+    "confidence": 0.0510813390944584,
+    "memory_update": false,
+    "termination_reason": "REVIEW_STOP"
+  },
+  {
+    "test_id": "C2-F1-05",
+    "step": 1,
+    "input_text": "P = Q + k",
+    "recall_candidates": [],
+    "resonance_scores": {
+      "pos": 0.0,
+      "neg": 0.0
+    },
+    "decision": "REVIEW",
+    "confidence": 0.0,
+    "memory_update": true,
+    "termination_reason": "CONTINUE"
+  },
+  {
+    "test_id": "C2-F1-05",
+    "step": 2,
+    "input_text": "P = Q",
+    "recall_candidates": [
+      "{'id': 'C2-F1-05_s1', 'text': 'P = Q + k'}"
+    ],
+    "resonance_scores": {
+      "pos": 0.043675730450817185,
+      "neg": 0.003407456590413134
+    },
+    "decision": "REVIEW",
+    "confidence": 0.043675730450817185,
+    "memory_update": false,
+    "termination_reason": "REVIEW_STOP"
+  },
+  {
+    "test_id": "C2-F1-06",
+    "step": 1,
+    "input_text": "U = V + unknown",
+    "recall_candidates": [],
+    "resonance_scores": {
+      "pos": 0.0,
+      "neg": 0.0
+    },
+    "decision": "REVIEW",
+    "confidence": 0.0,
+    "memory_update": true,
+    "termination_reason": "CONTINUE"
+  },
+  {
+    "test_id": "C2-F1-06",
+    "step": 2,
+    "input_text": "U = V",
+    "recall_candidates": [
+      "{'id': 'C2-F1-06_s1', 'text': 'U = V + unknown'}"
+    ],
+    "resonance_scores": {
+      "pos": 0.010339846443942643,
+      "neg": 0.02588883641071889
+    },
+    "decision": "REVIEW",
+    "confidence": 0.02588883641071889,
+    "memory_update": false,
+    "termination_reason": "REVIEW_STOP"
+  },
+  {
+    "test_id": "C2-F2-01",
+    "step": 1,
+    "input_text": "x = y + 1",
+    "recall_candidates": [],
+    "resonance_scores": {
+      "pos": 0.0,
+      "neg": 0.0
+    },
+    "decision": "REVIEW",
+    "confidence": 0.0,
+    "memory_update": true,
+    "termination_reason": "CONTINUE"
+  },
+  {
+    "test_id": "C2-F2-01",
+    "step": 2,
+    "input_text": "x = y",
+    "recall_candidates": [
+      "{'id': 'C2-F2-01_s1', 'text': 'x = y + 1'}"
+    ],
+    "resonance_scores": {
+      "pos": 0.006153097758088987,
+      "neg": 0.014651859563276953
+    },
+    "decision": "REVIEW",
+    "confidence": 0.014651859563276953,
+    "memory_update": false,
+    "termination_reason": "REVIEW_STOP"
+  },
+  {
+    "test_id": "C2-F2-02",
+    "step": 1,
+    "input_text": "x = y + 1",
+    "recall_candidates": [],
+    "resonance_scores": {
+      "pos": 0.0,
+      "neg": 0.0
+    },
+    "decision": "REVIEW",
+    "confidence": 0.0,
+    "memory_update": true,
+    "termination_reason": "CONTINUE"
+  },
+  {
+    "test_id": "C2-F2-02",
+    "step": 2,
+    "input_text": "x = y",
+    "recall_candidates": [
+      "{'id': 'C2-F2-02_s1', 'text': 'x = y + 1'}"
+    ],
+    "resonance_scores": {
+      "pos": 0.006153097758088987,
+      "neg": 0.014651859563276953
+    },
+    "decision": "REVIEW",
+    "confidence": 0.014651859563276953,
+    "memory_update": false,
+    "termination_reason": "REVIEW_STOP"
+  },
+  {
+    "test_id": "C2-F2-02",
+    "step": 3,
+    "input_text": "x = y + 1",
+    "recall_candidates": [
+      "{'id': 'C2-F2-02_s1', 'text': 'x = y + 1'}"
+    ],
+    "resonance_scores": {
+      "pos": 1.0,
+      "neg": 0.34067115502424894
+    },
+    "decision": "ACCEPT",
+    "confidence": 1.0,
+    "memory_update": true,
+    "termination_reason": "CONTINUE"
+  },
+  {
+    "test_id": "C2-F2-02",
+    "step": 4,
+    "input_text": "x = y",
+    "recall_candidates": [
+      "{'id': 'C2-F2-02_s1', 'text': 'x = y + 1'}",
+      "{'id': 'C2-F2-02_s3', 'text': 'x = y + 1'}"
+    ],
+    "resonance_scores": {
+      "pos": 0.006153097758088987,
+      "neg": 0.014651859563276953
+    },
+    "decision": "REVIEW",
+    "confidence": 0.014651859563276953,
+    "memory_update": false,
+    "termination_reason": "REVIEW_STOP"
+  },
+  {
+    "test_id": "C2-F2-04",
+    "step": 1,
+    "input_text": "s = t + epsilon",
+    "recall_candidates": [],
+    "resonance_scores": {
+      "pos": 0.0,
+      "neg": 0.0
+    },
+    "decision": "REVIEW",
+    "confidence": 0.0,
+    "memory_update": true,
+    "termination_reason": "CONTINUE"
+  },
+  {
+    "test_id": "C2-F2-04",
+    "step": 2,
+    "input_text": "s = t",
+    "recall_candidates": [
+      "{'id': 'C2-F2-04_s1', 'text': 's = t + epsilon'}"
+    ],
+    "resonance_scores": {
+      "pos": 0.012305474355721671,
+      "neg": 0.02541343388533786
+    },
+    "decision": "REVIEW",
+    "confidence": 0.02541343388533786,
+    "memory_update": false,
+    "termination_reason": "REVIEW_STOP"
+  }
+]

@@ -14,6 +14,9 @@ import logging
 from .representation.vision_encoder import HolographicVisionEncoder
 from .memory.dynamic import DynamicHolographicMemory
 
+# SIR Core Integration
+from coherent.core.sir import SIRFactory, SIRProjector
+
 class CortexController:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
@@ -70,3 +73,33 @@ class CortexController:
                 rationale=rationale
             )
         return None
+
+    def observe_via_sir(self, input_data: str, modality: str = "math") -> Any:
+        """
+        New Integration: Observe input via Semantic Intermediate Representation (SIR).
+        1. Convert input -> SIR (Normalized Structure)
+        2. Project SIR -> HolographicTensor (S-Vector)
+        
+        Args:
+            input_data: Raw input string (e.g., "x + y")
+            modality: "math", "natural_language", "code"
+            
+        Returns:
+            dict: { "sir": SIR, "vector": np.ndarray, "hash": str }
+        """
+        # 1. Factory Creation
+        if modality == "math":
+            sir = SIRFactory.from_math_expression(input_data)
+        else:
+            # Placeholder for future NL/Code parsers
+            sir = SIRFactory.create_empty(modality)
+            
+        # 2. Vector Projection
+        projector = SIRProjector(dimension=1024)
+        s_vector = projector.project(sir)
+        
+        return {
+            "sir": sir,
+            "vector": s_vector,
+            "hash": sir.structure_signature.graph_hash
+        }
