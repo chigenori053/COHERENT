@@ -38,9 +38,10 @@ class CausalTrace:
     timestamp: float = field(default_factory=time.time)
 
 class CausalHolographicMemory(HolographicMemoryBase):
-    def __init__(self):
+    def __init__(self, experience_manager: Optional[Any] = None):
         self._transitions: List[Dict[str, Any]] = []
         self._decision_logs: List[CausalTrace] = []
+        self.experience_manager = experience_manager
         
         # 5.2 Utility Table (State x Action)
         # States: VALID, INVALID
@@ -60,7 +61,7 @@ class CausalHolographicMemory(HolographicMemoryBase):
             'bias': -4.0 # Base bias to be conservative
         }
 
-    def evaluate_decision(self, state: DecisionState) -> Action:
+    def evaluate_decision(self, state: DecisionState, metadata: Dict[str, Any] = None) -> Action:
         """
         Evaluate a memory state and return the optimal action.
         Follows Spec v1.0 Section 7.
@@ -89,6 +90,13 @@ class CausalHolographicMemory(HolographicMemoryBase):
             final_decision=best_action_name
         )
         self._log_trace(trace)
+        
+        # 5. Persistence for Negative Decisions (Review/Reject)
+        if final_action in [Action.SUPPRESS, Action.DEFER_REVIEW] and self.experience_manager:
+            try:
+                self.experience_manager.save_refusal(state, best_action_name, metadata or {})
+            except Exception as e:
+                print(f"Warning: Failed to persist persistence decision: {e}")
         
         return final_action
 

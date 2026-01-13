@@ -62,7 +62,7 @@ class MemoryOrchestrator:
             historical_conflict_rate=0.0 # Placeholder
         )
         
-        action = self.causal.evaluate_decision(decision_state)
+        action = self.causal.evaluate_decision(decision_state, metadata)
         
         # [Sandbox] Non-invasive capture
         if self.sandbox:

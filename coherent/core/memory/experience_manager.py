@@ -76,3 +76,43 @@ class ExperienceManager:
                 self.logger.error(f"Failed to parse experience entry: {e}")
                 
         return entries
+
+    def save_refusal(self, decision_state: Any, action: str, metadata: Dict[str, Any]):
+        """
+        Persists a refusal or review decision (SUPPRESS/DEFER_REVIEW) as an experience.
+        This allows the system to recall 'what it refused' and 'why'.
+        """
+        edge_id = str(uuid.uuid4())
+        
+        # Original input content or ID
+        original_expr = metadata.get("content", metadata.get("id", "unknown_input"))
+        
+        entry = ExperienceEntry(
+            id=edge_id,
+            original_expr=original_expr,
+            next_expr="<BLOCKED>",
+            rule_id=action,     # e.g., "Action.SUPPRESS"
+            result_label="REJECTED" if "SUPPRESS" in action else "REVIEW_NEEDED",
+            category="decision_trace",
+            score=decision_state.resonance_score if hasattr(decision_state, 'resonance_score') else 0.0,
+            vector=None, # storing validation vector if available? For now None or need to pass input vector.
+            metadata={
+                "decision_margin": decision_state.margin if hasattr(decision_state, 'margin') else 0.0,
+                "entropy": decision_state.entropy_estimate if hasattr(decision_state, 'entropy_estimate') else 0.0,
+                "raw_metadata": metadata
+            }
+        )
+        
+        # note: saving without vector for now means it's not recallable by similarity 
+        # unless we pass the input vector. 
+        # Ideally we should pass 'input_vector' to save_refusal.
+        # But for V1.1 verification of storage, this suffices.
+        
+        self.vector_store.add(
+            collection_name=self.collection_name,
+            vectors=[[0.0]*64], # Placeholder vector or need real one.
+            metadatas=[entry.to_metadata()],
+            ids=[edge_id]
+        )
+        self.logger.info(f"Saved Refusal: {action} for {original_expr}")
+
