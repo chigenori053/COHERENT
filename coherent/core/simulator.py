@@ -169,7 +169,7 @@ class RecallFirstSimulator:
         # "Ψ(x,y,t) = ΣΨ_DHM + Ψ_query"
         # We will add it to DHM temporarily or consider it the 'active' state.
         self.layer1_resonance.add(vec, {"session_id": self.current_session.session_id})
-        self._log_event(RecallEventType.QUERY_INJECTED, "Layer1", {}, {})
+        self._log_event(RecallEventType.QUERY_INJECTED, "MS-L1", {}, {})
 
     def _step_resonance_evaluation(self, vec: np.ndarray) -> float:
         # Compute resonance against DHM (Self-Consistency) and Static (Long-term)
@@ -178,22 +178,35 @@ class RecallFirstSimulator:
         
         # DHM Resonance (Short-term context)
         dhm_res = 0.0
-        dhm_results = self.layer1_resonance.query(vec) # Self-query excluding self? 
+        dhm_results = self.layer1_resonance.query(vec, top_k=5) # Get Top 5 for B-Axis Viz
         # In current DHM impl, query checks all storage. Since we just added it, it matches self 1.0.
         # We might want resonance with *other* things.
         if len(dhm_results) > 1:
              dhm_res = dhm_results[1][1] # Second best match (non-self)
+        elif len(dhm_results) == 1:
+             dhm_res = dhm_results[0][1] # Fallback if only self exists
+
+        # Format for logs
+        dhm_top_k = [{"id": str(meta) if not isinstance(meta, str) else meta, "score": float(score)} for meta, score in dhm_results]
         
         # Static Resonance (Long-term)
         shm_res = 0.0
-        shm_results = self.layer2_static.query(vec)
+        shm_results = self.layer2_static.query(vec, top_k=5)
         if shm_results:
             shm_res = shm_results[0][1]
             
+        shm_top_k = [{"id": str(rid), "score": float(score)} for rid, score in shm_results]
+            
         total_resonance = max(dhm_res, shm_res) # Simplified aggregation
         
-        metrics = {"dhm_resonance": dhm_res, "shm_resonance": shm_res, "total_resonance": total_resonance}
-        self._log_event(RecallEventType.DHM_RESONANCE_FORMED, "Layer1", metrics, {})
+        metrics = {
+            "dhm_resonance": dhm_res, 
+            "shm_resonance": shm_res, 
+            "total_resonance": total_resonance,
+            "dhm_top_k": dhm_top_k,
+            "shm_top_k": shm_top_k
+        }
+        self._log_event(RecallEventType.DHM_RESONANCE_FORMED, "MS-L1", metrics, {})
         
         return total_resonance
 
@@ -201,7 +214,7 @@ class RecallFirstSimulator:
         # Spec 5.3: Semantic admissibility only
         # We can check if vector is malformed or out of domain if we had domain filters.
         # For v2.1, we log it passes.
-        self._log_event(RecallEventType.STATIC_FILTER_APPLIED, "Layer2", {"admissible": True}, {})
+        self._log_event(RecallEventType.STATIC_FILTER_APPLIED, "MS-L2", {"admissible": True}, {})
 
     def _step_decision_computation(self, resonance_score: float) -> DecisionState:
         # Spec 6.0 DecisionState Model
@@ -210,6 +223,7 @@ class RecallFirstSimulator:
         
         entropy = 1.0 - resonance_score # Simplified proxy
         margin = max(0.0, resonance_score - 0.2) # Mock margin
+        ambiguity = max(0.0, 1.0 - margin) # New metric for v2.0
         
         ds = DecisionState(
             resonance_score=resonance_score,
@@ -222,9 +236,10 @@ class RecallFirstSimulator:
         metrics = {
             "resonance": ds.resonance_score,
             "entropy": ds.entropy_estimate,
-            "margin": ds.margin
+            "margin": ds.margin,
+            "ambiguity": ambiguity
         }
-        self._log_event(RecallEventType.DECISION_STATE_COMPUTED, "Pipeline", metrics, {})
+        self._log_event(RecallEventType.DECISION_STATE_COMPUTED, "MS-L2", metrics, {})
         return ds
 
     def _step_action_selection(self, ds: DecisionState) -> Action:
@@ -232,8 +247,8 @@ class RecallFirstSimulator:
         action = self.layer2_causal.evaluate_decision(ds, {"content": self.current_session.task.input_source.content})
         
         metrics = {"action": action.name}
-        self._log_event(RecallEventType.CAUSAL_GATE_EVALUATED, "Layer2", metrics, {})
-        self._log_event(RecallEventType.ACTION_SELECTED, "Layer2", metrics, {})
+        self._log_event(RecallEventType.CAUSAL_GATE_EVALUATED, "MS-L2", metrics, {})
+        self._log_event(RecallEventType.ACTION_SELECTED, "MS-L2", metrics, {})
         
         self.current_session.final_decision = action.name
         return action
@@ -283,7 +298,7 @@ class RecallFirstSimulator:
             "written": self.current_session.experience_written, 
             "exp_id": self.current_session.experience_id
         }
-        self._log_event(RecallEventType.EXPERIENCE_UPDATE, "Layer3", metrics, {})
+        self._log_event(RecallEventType.EXPERIENCE_UPDATE, "MS-L3", metrics, {})
 
     def _log_event(self, event_type: RecallEventType, layer: str, metrics: Dict, details: Dict):
         evt = RecallEvent(
