@@ -3,7 +3,7 @@ name = "coherent-ai"
 version = "0.1.0"
 description = "Optical Interference Calculation & Causal Intelligence System"
 readme = "README.md"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.12"
 dependencies = [
     "sympy>=1.13",
     "lark-parser>=0.12",
