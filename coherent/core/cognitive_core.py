@@ -16,12 +16,33 @@ import datetime
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional, Tuple
 from enum import Enum
+from dataclasses import asdict
 
 from coherent.core.simulation_core import SimulationCore
 from coherent.core.memory.experience_manager import ExperienceManager
 from coherent.core.memory.holographic.dynamic import DynamicHolographicMemory
+from coherent.core.simulation_core import SimulationCore
+from coherent.core.memory.experience_manager import ExperienceManager
+from coherent.core.memory.holographic.dynamic import DynamicHolographicMemory
+from coherent.core.reasoning_engine import ReasoningEngine, Hypothesis
 
-# --- 1. Internal State Metrics Schema ---
+# --- 0. Tracing / Visualization Schema ---
+
+@dataclass
+class CognitiveEvent:
+    step: str # "Recall", "Reasoning", "Decision", "Simulation", "Experience"
+    description: str
+    metrics: Dict[str, Any]
+    timestamp: float = field(default_factory=lambda: datetime.datetime.now().timestamp())
+    details: Dict[str, Any] = field(default_factory=dict)
+
+@dataclass
+class CognitiveTrace:
+    session_id: str
+    input_content: Any
+    events: List[CognitiveEvent] = field(default_factory=list)
+    final_decision: Optional['CognitiveDecision'] = None
+
 
 @dataclass
 class CognitiveStateVector:
@@ -67,10 +88,11 @@ class CognitiveCore:
         # Submodules
         self.experience_memory = experience_manager
         self.recall_engine = DynamicHolographicMemory(capacity=100) # Resonance Field
+        self.reasoning_engine = ReasoningEngine() # Reasoning Layer
         self.simulation_core = SimulationCore() # Execution Unit
         
         # Hyperparameters (from Spec)
-        self.tau = 1.0       # Softmax temperature
+        self.tau = 0.25      # Softmax temperature (Tuned 2026-01-15)
         self.alpha = 0.6     # Confidence composition weight
         self.theta_recall = 0.65 # Recall sigmoid center
         self.kappa = 10.0    # Recall sigmoid slope
@@ -78,45 +100,72 @@ class CognitiveCore:
         
         # Internal State
         self.current_state: Optional[CognitiveStateVector] = None
+        self.current_trace: Optional[CognitiveTrace] = None # Visualization Trace
 
-    def process_input(self, input_signal: Any) -> CognitiveDecision:
+    def process_input(self, input_signal: Any) -> 'CognitiveDecision':
         """
         Main Cognitive Loop:
         1. Recall (Resonance)
-        2. Reasoning (Candidate Generation) -> Not fully impl in MVP, assumed from Recall
+        2. Reasoning (Candidate Generation)
         3. State Metrics Calculation
         4. Decision Making
         5. (Optional) Simulation Activation
         6. Memory Update
         """
         session_id = str(uuid.uuid4())
+        self.current_trace = CognitiveTrace(session_id=session_id, input_content=str(input_signal))
         
         # 1. Recall & Resonance
         # Assume input_signal is converted to vector. 
-        # For MVP, we mock vector generation or use a simple hash/random if no parser.
-        # In real system, this comes from Parser/Encoder.
         query_vec = self._vectorize(input_signal)
         
         # Query Holographic Memory
         recall_results = self.recall_engine.query(query_vec, top_k=10)
         
-        # 2. Compute State Metrics
-        state_vector = self._calculate_metrics(recall_results, query_vec)
+        self._trace_event("Recall", "Query Holographic Memory", {
+            "top_score": recall_results[0][1] if recall_results else 0.0,
+            "count": len(recall_results)
+        }, {"top_k": [{"content": str(c), "score": float(s)} for c, s in recall_results]})
+        
+        # 2. Reasoning (Candidate Generation)
+        hypotheses = self.reasoning_engine.generate_hypotheses(recall_results, query_vec)
+        
+        self._trace_event("Reasoning", "Generate Hypotheses", {
+            "count": len(hypotheses),
+            "abductive": any(h.source == "Abduction" for h in hypotheses)
+        }, {"hypotheses": [asdict(h) for h in hypotheses]}) # Need dataclasses.asdict import if strictly typed, but let's assume dict conversion or simple list
+        
+        # 3. Compute State Metrics
+        state_vector = self._calculate_metrics(hypotheses)
         self.current_state = state_vector
         self.logger.info(f"CognitiveState: H={state_vector.entropy:.2f}, C={state_vector.confidence:.2f}, R={state_vector.recall_reliability:.2f}")
 
-        # 3. Decision Logic
+        # 4. Decision Logic
         decision = self._make_decision(state_vector)
         
-        # 4. Simulation Trigger (if needed)
+        self._trace_event("Decision", f"Made Decision: {decision.decision_type.name}", {
+            "entropy": state_vector.entropy,
+            "confidence": state_vector.confidence,
+            "recall_reliability": state_vector.recall_reliability,
+            "branching_pressure": state_vector.branching_pressure,
+            "decision": decision.decision_type.name 
+        }, {"reason": decision.reason, "action": decision.action})
+
+        
+        # 5. Simulation Trigger (if needed)
         if decision.decision_type == DecisionType.REVIEW:
              # Check Simulation Trigger Policy
              if self._should_activate_simulation(state_vector):
                  self.logger.info("Activating SimulationCore...")
+                 
+                 self._trace_event("Simulation", "Triggered SimulationCore", {"trigger": True}, {})
+                 
                  sim_result = self.simulation_core.execute_request({
                      "domain": "numeric", # Detect from input in real logic
                      "input_context": input_signal
                  })
+                 
+                 self._trace_event("Simulation", "Execution Complete", {"status": sim_result.get("status")}, sim_result)
                  
                  # Re-evaluate logic based on Sim result? 
                  # For MVP, we just accept Sim result if success.
@@ -127,25 +176,36 @@ class CognitiveCore:
                          reason=f"Simulation verified: {sim_result.get('result')}",
                          state_snapshot=state_vector
                      )
+                     
+                     self._trace_event("Decision", "Updated Decision after Simulation", {
+                        "decision": decision.decision_type.name
+                     }, {"reason": decision.reason})
         
-        # 5. Experience Update (Learning)
+        # 6. Experience Update (Learning)
         if decision.decision_type == DecisionType.ACCEPT:
             self._learn_experience(input_signal, decision)
+            self._trace_event("Experience", "Learned Experience", {"persisted": True}, {})
             
+        self.current_trace.final_decision = decision
         return decision
+
+    def _trace_event(self, step: str, desc: str, metrics: Dict, details: Dict):
+        if self.current_trace:
+            evt = CognitiveEvent(step, desc, metrics, details=details)
+            self.current_trace.events.append(evt)
 
     # --- Metrics Calculation Implementation ---
 
-    def _calculate_metrics(self, recall_results: List[Tuple[Any, float]], query_vec: np.ndarray) -> CognitiveStateVector:
+    def _calculate_metrics(self, hypotheses: List[Hypothesis]) -> CognitiveStateVector:
         """
         Implements equations from Spec 3.0 - 6.0
+        Now uses Hypotheses instead of raw scores.
         """
         # Extract Scores s_i(t)
-        # If no results (empty memory), we simulate high entropy/low confidence
-        if not recall_results:
+        if not hypotheses:
             return CognitiveStateVector(1.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
-        scores = np.array([score for _, score in recall_results])
+        scores = np.array([h.score for h in hypotheses])
         n = len(scores)
         
         # 1. Normalize Distribution p_i(t) (Softmax)

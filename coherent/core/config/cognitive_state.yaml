@@ -9,6 +9,7 @@ CognitiveCoreInternalState:
       range: [0.0, 1.0]
       definition: >
         Normalized Shannon entropy of candidate probability distribution.
+        (Softmax temperature tau=0.25 tuned for 0-1 input range)
       interpretation:
         low: H < 0.25
         medium: 0.25 <= H < 0.6
