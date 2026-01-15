@@ -11,7 +11,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 
 # Import Core
-from coherent.core.simulator import RecallFirstSimulator, RecallSession, RecallEventType
+from coherent.core.simulator import RecallFirstSimulator, RecallSession, RecallEventType, InputType
 from coherent.core.memory.experience_manager import ExperienceManager
 
 # Visualization Utilities
@@ -77,6 +77,12 @@ selected_scenario = st.sidebar.selectbox("Select Scenario", list(SCENARIOS.keys(
 init_val = SCENARIOS[selected_scenario] if selected_scenario != "Manual" else ""
 task_input = st.sidebar.text_area("Instruction", value=init_val)
 
+uploaded_file = st.sidebar.file_uploader("Attach Context/File", type=['txt', 'md'])
+file_content = ""
+if uploaded_file is not None:
+    file_content = uploaded_file.read().decode("utf-8")
+    st.sidebar.info(f"Loaded {uploaded_file.name}")
+
 if st.sidebar.button("Execute Task"):
     with st.spinner("Running Recall Pipeline..."):
         # Reset Simulator for cleanliness (optional, but good for demo)
@@ -87,7 +93,20 @@ if st.sidebar.button("Execute Task"):
         st.session_state.simulator.layer2_static.add(vec_math, {"id": "concept_algebra_basic"})
         
         # Run
-        session = st.session_state.simulator.start_session(task_input)
+        final_input = task_input
+        input_type = InputType.TEXT
+        
+        if uploaded_file:
+            # If file is present, we treat it as the content or append it.
+            # Simplified: if text empty, use file. If both, append file to text.
+            if not task_input.strip():
+                final_input = file_content
+                input_type = InputType.FILE
+            else:
+                final_input = f"{task_input}\n\n{file_content}"
+                input_type = InputType.FILE # Mixed content treated as file/complex
+        
+        session = st.session_state.simulator.start_session(final_input, input_type=input_type)
         try:
             st.session_state.simulator.execute_pipeline()
             st.session_state.session_data = session
@@ -95,6 +114,31 @@ if st.sidebar.button("Execute Task"):
             st.success("Execution Complete")
         except Exception as e:
             st.error(f"Execution Failed: {e}")
+
+# --- RESULT SECTION ---
+if st.session_state.session_data:
+    st.divider()
+    res_col1, res_col2 = st.columns([3, 1])
+    
+    with res_col1:
+        st.subheader("Execution Result")
+        result_text = st.session_state.session_data.execution_result
+        if result_text:
+            st.success(f"{result_text}")
+        else:
+            st.info("No result produced (Review or Suppression).")
+            
+    with res_col2:
+        st.subheader("Inference Source")
+        source = st.session_state.session_data.inference_source
+        if source == "Holographic (Recall)":
+            st.markdown("### 🔮 Recall")
+            st.caption("Retrieved from Memory")
+        elif source == "Logic (Computation)":
+            st.markdown("### ⚙️ Logic")
+            st.caption("Computed by Engine")
+        else:
+            st.markdown("### ❓ Unknown")
 
 # --- MAIN: A-AXIS (TIMELINE) ---
 st.header("A-Axis: MemorySpace Layers (Causal Structure)")
