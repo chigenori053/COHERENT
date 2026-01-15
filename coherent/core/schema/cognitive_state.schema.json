@@ -1,0 +1,39 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://coherent.ai/schema/cognitive_state.schema.json",
+    "title": "CognitiveCoreInternalState",
+    "type": "object",
+    "required": [
+        "entropy",
+        "confidence",
+        "recall_reliability",
+        "branching_pressure"
+    ],
+    "properties": {
+        "entropy": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "description": "Normalized entropy H(t) representing uncertainty of candidate distribution"
+        },
+        "confidence": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "description": "Composite confidence C(t) derived from dominance margin and entropy"
+        },
+        "recall_reliability": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "description": "Recall reliability R(t) based on holographic resonance intensity"
+        },
+        "branching_pressure": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "description": "Normalized branching pressure B̃(t)"
+        }
+    },
+    "additionalProperties": false
+}

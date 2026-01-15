@@ -1,0 +1,75 @@
+CognitiveCoreInternalState:
+  description: >
+    Normalized internal state metrics governing reasoning,
+    decision making, and simulation activation.
+
+  metrics:
+    entropy:
+      symbol: H(t)
+      range: [0.0, 1.0]
+      definition: >
+        Normalized Shannon entropy of candidate probability distribution.
+      interpretation:
+        low: H < 0.25
+        medium: 0.25 <= H < 0.6
+        high: H >= 0.6
+
+    confidence:
+      symbol: C(t)
+      range: [0.0, 1.0]
+      definition: >
+        Composite confidence combining dominance margin and entropy concentration.
+      components:
+        margin_confidence:
+          symbol: C_delta(t)
+          formula: p_max - p_second
+        concentration_confidence:
+          symbol: C_H(t)
+          formula: 1 - H(t)
+      composition:
+        alpha: 0.6
+        formula: C = alpha * C_delta + (1 - alpha) * C_H
+      interpretation:
+        high: C >= 0.75
+        medium: 0.4 <= C < 0.75
+        low: C < 0.4
+
+    recall_reliability:
+      symbol: R(t)
+      range: [0.0, 1.0]
+      definition: >
+        Sigmoid-scaled reliability of holographic recall resonance.
+      parameters:
+        theta_recall: 0.65
+        kappa: 10.0
+      interpretation:
+        reliable: R >= 0.6
+        unreliable: R < 0.4
+
+    branching_pressure:
+      symbol: B_tilde(t)
+      range: [0.0, 1.0]
+      definition: >
+        Normalized pressure caused by multiple viable candidate branches.
+      parameters:
+        epsilon: 0.05
+        max_branching: configurable
+      interpretation:
+        low: B < 0.3
+        medium: 0.3 <= B < 0.7
+        high: B >= 0.7
+
+DecisionPolicy:
+  accept:
+    condition: confidence >= 0.75 and recall_reliability >= 0.6
+  review:
+    condition: confidence >= 0.4 and confidence < 0.75
+  reject:
+    condition: confidence < 0.4 and recall_reliability < 0.4
+
+SimulationTriggerPolicy:
+  trigger_if_any:
+    - recall_reliability < 0.4
+    - entropy >= 0.6
+    - branching_pressure >= 0.7
+    - confidence < 0.4
