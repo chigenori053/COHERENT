@@ -102,7 +102,7 @@ class CognitiveCore:
         self.current_state: Optional[CognitiveStateVector] = None
         self.current_trace: Optional[CognitiveTrace] = None # Visualization Trace
 
-    def process_input(self, input_signal: Any) -> 'CognitiveDecision':
+    def process_input(self, input_signal: Any, context_config: Optional[Dict[str, Any]] = None) -> 'CognitiveDecision':
         """
         Main Cognitive Loop:
         1. Recall (Resonance)
@@ -112,8 +112,13 @@ class CognitiveCore:
         5. (Optional) Simulation Activation
         6. Memory Update
         """
+        if context_config is None:
+            context_config = {}
+            
         session_id = str(uuid.uuid4())
-        self.current_trace = CognitiveTrace(session_id=session_id, input_content=str(input_signal))
+        # Flatten input for display if it's a dict (multimodal)
+        display_content = str(input_signal)[:100] + "..." if len(str(input_signal)) > 100 else str(input_signal)
+        self.current_trace = CognitiveTrace(session_id=session_id, input_content=display_content)
         
         # 1. Recall & Resonance
         # Assume input_signal is converted to vector. 
@@ -155,7 +160,10 @@ class CognitiveCore:
         # 5. Simulation Trigger (if needed)
         if decision.decision_type == DecisionType.REVIEW:
              # Check Simulation Trigger Policy
-             if self._should_activate_simulation(state_vector):
+             # Check explicit enable/disable flag (Default: True)
+             simulation_enabled = context_config.get("enable_simulation", True)
+             
+             if simulation_enabled and self._should_activate_simulation(state_vector):
                  self.logger.info("Activating SimulationCore...")
                  
                  self._trace_event("Simulation", "Triggered SimulationCore", {"trigger": True}, {})
@@ -274,9 +282,9 @@ class CognitiveCore:
         if state.confidence >= 0.75 and state.recall_reliability >= 0.6:
             return CognitiveDecision(DecisionType.ACCEPT, "PROMOTE", "High Confidence & Reliable Recall", state)
             
-        # Reject: C < 0.4 AND R < 0.4
-        elif state.confidence < 0.4 and state.recall_reliability < 0.4:
-            return CognitiveDecision(DecisionType.REJECT, "SUPPRESS", "Low Confidence & Unreliable Recall", state)
+        # Reject: C < 0.2 AND R < 0.2 (Relaxed from 0.4 to allow Novelty/Simulation)
+        elif state.confidence < 0.2 and state.recall_reliability < 0.2:
+            return CognitiveDecision(DecisionType.REJECT, "SUPPRESS", "Extremely Low Confidence & Reliability", state)
             
         # Review (everything else)
         else:
@@ -318,10 +326,22 @@ class CognitiveCore:
         # Mock vectorizer
         # In real impl, use Parser/Embedding
         # For repeatable tests, we might want a determinstic hash if input is str
+        seed_source = ""
+        
         if isinstance(input_signal, str):
+             seed_source = input_signal
+        elif isinstance(input_signal, dict):
+             # Handle Multimodal Dict {"text": "...", "image": ...}
+             # Use text part for seed
+             seed_source = input_signal.get("text", "") + str(input_signal.get("image_name", ""))
+        else:
+             seed_source = str(input_signal)
+
+        if seed_source:
              import hashlib
-             seed = int(hashlib.md5(input_signal.encode()).hexdigest(), 16) % (2**32)
+             seed = int(hashlib.md5(seed_source.encode('utf-8', errors='ignore')).hexdigest(), 16) % (2**32)
              rng = np.random.default_rng(seed)
              vec = rng.random(64)
              return vec / np.linalg.norm(vec)
+             
         return np.random.rand(64)

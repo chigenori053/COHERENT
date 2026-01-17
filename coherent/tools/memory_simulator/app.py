@@ -56,6 +56,13 @@ if 'current_event_idx' not in st.session_state:
 # --- SIDEBAR: CONTROLS ---
 st.sidebar.header("1. Execution Control")
 
+# --- SETTINGS ---
+with st.sidebar.expander("Settings", expanded=True):
+    enable_simulation = st.checkbox("Enable SimulationCore", value=True, help="If unchecked, Logic Layer (Simulation) will be skipped even if triggered.")
+
+# --- INPUT ---
+st.sidebar.header("1. Execution Control")
+
 SCENARIOS = {
     "Manual": "",
     "S1: Novelty (Clear Winner)": "3x + 5x",
@@ -65,7 +72,26 @@ SCENARIOS = {
 
 selected_scenario = st.sidebar.selectbox("Select Scenario", list(SCENARIOS.keys()))
 init_val = SCENARIOS[selected_scenario] if selected_scenario != "Manual" else ""
-task_input = st.sidebar.text_area("Input Signal", value=init_val)
+
+input_mode = st.sidebar.radio("Input Mode", ["Text Only", "Multimodal (Text + Image)"])
+
+task_input_text = st.sidebar.text_area("Input Text (Signal)", value=init_val)
+task_input_image = None
+
+if input_mode == "Multimodal (Text + Image)":
+    task_input_image = st.sidebar.file_uploader("Upload Context Image", type=["png", "jpg", "jpeg"])
+    if task_input_image:
+        st.sidebar.image(task_input_image, caption="Uploaded Config", use_container_width=True)
+
+# Construct Signal
+if task_input_image:
+    task_input = {
+        "text": task_input_text,
+        "image_name": task_input_image.name,
+        # In real app, we would process bytes here
+    }
+else:
+    task_input = task_input_text
 
 if st.sidebar.button("Process Input"):
     with st.spinner("Thinking..."):
@@ -73,7 +99,8 @@ if st.sidebar.button("Process Input"):
         # st.session_state.cognitive_core = ... 
         
         # Run
-        decision = st.session_state.cognitive_core.process_input(task_input)
+        config = {"enable_simulation": enable_simulation}
+        decision = st.session_state.cognitive_core.process_input(task_input, context_config=config)
         
         # Store Trace
         st.session_state.current_trace = st.session_state.cognitive_core.current_trace
@@ -231,6 +258,18 @@ if current_event:
                         tooltip=['content', 'score', 'source']
                     ).properties(title="Hypothesis Competition")
                     st.altair_chart(chart, use_container_width=True)
+        
+    # --- LOG EXPORT ---
+    st.divider()
+    with st.expander("Raw Execution Log (JSON)"):
+        # Convert CognitiveTrace to dict 
+        # (Naive serialization, in prod use default=str or similar)
+        try:
+            log_data = asdict(st.session_state.current_trace)
+            st.json(log_data)
+        except Exception as e:
+            st.error(f"Serialization Error: {e}")
+            st.write(st.session_state.current_trace)
 
 else:
     st.write("Waiting for trace selection...")

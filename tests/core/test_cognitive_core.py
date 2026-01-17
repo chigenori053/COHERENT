@@ -3,6 +3,7 @@ import pytest
 import numpy as np
 from unittest.mock import MagicMock
 from coherent.core.cognitive_core import CognitiveCore, CognitiveStateVector, DecisionType
+from coherent.core.reasoning_engine import Hypothesis
 
 @pytest.fixture
 def cognitive_core():
@@ -18,9 +19,9 @@ def test_metrics_calculation_single_dominant(cognitive_core):
     Test case: Single dominant memory (Entropy should be low, Confidence high)
     """
     results = [("id1", 10.0), ("id2", 1.0), ("id3", 1.0)]
-    query = np.zeros(64)
+    hypotheses = [Hypothesis(id=i[0], content="", score=i[1], source="Test") for i in results]
     
-    state = cognitive_core._calculate_metrics(results, query)
+    state = cognitive_core._calculate_metrics(hypotheses)
     
     assert state.entropy < 0.25
     assert state.confidence > 0.8
@@ -32,22 +33,22 @@ def test_metrics_calculation_high_entropy(cognitive_core):
     Test case: Uniform distribution (Entropy high, Confidence low)
     """
     results = [("id1", 5.0), ("id2", 5.0), ("id3", 5.0), ("id4", 5.0)]
-    query = np.zeros(64)
+    hypotheses = [Hypothesis(id=i[0], content="", score=i[1], source="Test") for i in results]
     
-    state = cognitive_core._calculate_metrics(results, query)
+    state = cognitive_core._calculate_metrics(hypotheses)
     
     assert abs(state.entropy - 1.0) < 0.01
     assert state.confidence < 0.1
 
 def test_recall_reliability_logic(cognitive_core):
     # High score
-    results_high = [("id1", 1.0)] 
-    state_high = cognitive_core._calculate_metrics(results_high, np.zeros(64))
+    hypotheses_high = [Hypothesis(id="id1", content="", score=1.0, source="Test")]
+    state_high = cognitive_core._calculate_metrics(hypotheses_high)
     assert state_high.recall_reliability > 0.9
     
     # Low score
-    results_low = [("id1", 0.4)]
-    state_low = cognitive_core._calculate_metrics(results_low, np.zeros(64))
+    hypotheses_low = [Hypothesis(id="id1", content="", score=0.4, source="Test")]
+    state_low = cognitive_core._calculate_metrics(hypotheses_low)
     assert state_low.recall_reliability < 0.2
 
 def test_decision_logic_accept(cognitive_core):
@@ -60,11 +61,22 @@ def test_decision_logic_accept(cognitive_core):
     assert decision.decision_type == DecisionType.ACCEPT
     assert decision.action == "PROMOTE"
 
-def test_decision_logic_reject(cognitive_core):
-    # Case: Low Confidence -> REJECT
+def test_decision_logic_novelty_review(cognitive_core):
+    # Case: Low Confidence/Recall (Novelty) -> REVIEW (was REJECT)
+    # Thresholds relaxed to < 0.2
     state = CognitiveStateVector(
         entropy=0.9, confidence=0.3, margin_confidence=0.1, 
         concentration_confidence=0.1, recall_reliability=0.3, branching_pressure=0.9
+    )
+    decision = cognitive_core._make_decision(state)
+    assert decision.decision_type == DecisionType.REVIEW
+    assert decision.action == "DEFER_REVIEW"
+
+def test_decision_logic_extreme_reject(cognitive_core):
+    # Case: Extremely Low Confidence -> REJECT
+    state = CognitiveStateVector(
+        entropy=0.99, confidence=0.1, margin_confidence=0.01, 
+        concentration_confidence=0.01, recall_reliability=0.1, branching_pressure=0.9
     )
     decision = cognitive_core._make_decision(state)
     assert decision.decision_type == DecisionType.REJECT
