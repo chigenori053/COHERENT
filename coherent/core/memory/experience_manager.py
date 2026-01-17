@@ -116,3 +116,40 @@ class ExperienceManager:
         )
         self.logger.info(f"Saved Refusal: {action} for {original_expr}")
 
+    def log_experience(self, input_signal: Any, metadata: Dict[str, Any]):
+        """
+        Generic logging of cognitive experience (Decisions).
+        """
+        edge_id = str(uuid.uuid4())
+        
+        # Extract content
+        content = ""
+        if isinstance(input_signal, dict):
+            content = input_signal.get("text", str(input_signal))
+            # If image involved, maybe append?
+            if "image_name" in input_signal:
+                content += f" [Image: {input_signal['image_name']}]"
+        else:
+            content = str(input_signal)
+            
+        decision_val = metadata.get("decision", "UNKNOWN")
+        
+        entry = ExperienceEntry(
+            id=edge_id,
+            original_expr=content,
+            next_expr="<DECISION>",
+            rule_id=f"Decision.{decision_val}",
+            result_label=decision_val,
+            category="cognitive_trace",
+            score=metadata.get("metrics", {}).get("C", 0.0), # Confidence as score
+            vector=None, # Ideal: input vector
+            metadata=metadata
+        )
+        
+        self.vector_store.add(
+            collection_name=self.collection_name,
+            vectors=[[0.0]*64], # Placeholder vector
+            metadatas=[entry.to_metadata()],
+            ids=[edge_id]
+        )
+        self.logger.info(f"Logged Experience: {decision_val} for {content}")

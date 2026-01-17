@@ -46,3 +46,16 @@ Use these sentences to verify the Natural Language Processing capabilities in th
 - `Please find the solution for sin(x) = 0`
 - `x^2 - 4 = 0 の解を知りたい`
 - `Is x=2 a solution to x^2=4?` (Intent: Verify)
+
+## 5. Translation & Coding (翻訳・コーディング)
+
+### English
+- **Translation**: `Translate "Good Morning" into 10 languages`
+- **Translation**: `Display "Hello" in 10 languages`
+- **Coding**: `Write a python script to print "Hello"`
+
+### Japanese (日本語)
+- **翻訳**: `"おはようございます"、"こんにちは"、"こんばんは" の言葉を10ヶ国語で表示して`
+- **翻訳**: `"ありがとう" を翻訳して`
+- **数値解析**: `55667789を素因数分解して` (Numeric/Factorization)
+- **計算**: `計算して: 1 + 2 * 3` (Arithmetic Cleaning)

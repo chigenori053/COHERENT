@@ -168,8 +168,11 @@ class CognitiveCore:
                  
                  self._trace_event("Simulation", "Triggered SimulationCore", {"trigger": True}, {})
                  
+                 # Detect Domain
+                 detected_domain = self._detect_domain(input_signal)
+                 
                  sim_result = self.simulation_core.execute_request({
-                     "domain": "numeric", # Detect from input in real logic
+                     "domain": detected_domain,
                      "input_context": input_signal
                  })
                  
@@ -177,22 +180,20 @@ class CognitiveCore:
                  
                  # Re-evaluate logic based on Sim result? 
                  # For MVP, we just accept Sim result if success.
-                 if sim_result.get("status") == "SUCCESS":
-                     decision = CognitiveDecision(
-                         decision_type=DecisionType.ACCEPT,
-                         action="PROMOTE_SIMULATED",
-                         reason=f"Simulation verified: {sim_result.get('result')}",
-                         state_snapshot=state_vector
-                     )
-                     
-                     self._trace_event("Decision", "Updated Decision after Simulation", {
-                        "decision": decision.decision_type.name
-                     }, {"reason": decision.reason})
+                 decision = self._update_decision_after_simulation(decision, sim_result)
+                 
+                 self._trace_event("Decision", "Updated Decision after Simulation", {
+                    "decision": decision.decision_type.name
+                 }, {"reason": decision.reason})
         
         # 6. Experience Update (Learning)
         if decision.decision_type == DecisionType.ACCEPT:
             self._learn_experience(input_signal, decision)
-            self._trace_event("Experience", "Learned Experience", {"persisted": True}, {})
+             # Trace persistence status based on whether it was skipped or not?
+             # _learn_experience traces if skipped. If not skipped, we trace here?
+             # Let's move persistence tracing inside _learn_experience completely?
+             # For now, trace persistence intention.
+            self._trace_event("Experience", "Learned Experience", {"persisted": decision.state_snapshot.confidence >= 0.6}, {})
             
         self.current_trace.final_decision = decision
         return decision
@@ -344,4 +345,107 @@ class CognitiveCore:
              vec = rng.random(64)
              return vec / np.linalg.norm(vec)
              
-        return np.random.rand(64)
+    def _detect_domain(self, input_signal: Any) -> str:
+        """
+        Simple heuristic to detect simulation domain.
+        """
+        # Multimodal / Vision detection
+        if isinstance(input_signal, dict):
+            if "image_name" in input_signal or "image" in input_signal:
+                return "vision"
+            # Fallback for dict: extract 'text' content for text logic
+            text = str(input_signal.get("text", input_signal)).lower()
+        else:
+            text = str(input_signal).lower()
+        
+        # Coding / Text Generation Keywords
+        coding_keywords = [
+            "code", "function", "generate", "list", "translate", "言葉", "語", 
+            "program", "script", "display", "print", "show", "hello"
+        ]
+        
+        # Numeric / Math Keywords
+        numeric_keywords = [
+            "calculate", "solve", "math", "factor", "prime", "comput", "equation", "素因数", "計算"
+        ]
+        # Common Math Operators
+        if any(op in text for op in ["+", "-", "*", "/", "="]) and any(char.isdigit() for char in text):
+             # Weak signal, check if it looks like a sentence
+             pass
+             
+        for kw in numeric_keywords:
+            if kw in text:
+                return "numeric"
+                
+        for kw in coding_keywords:
+            if kw in text:
+                return "coding"
+                
+        # Fallback based on content
+        # If it has digits and operators, maybe numeric?
+        import re
+        if re.search(r'\d+\s*[\+\-\*\/]\s*\d+', text):
+            return "numeric"
+            
+        return "numeric" # Default to numeric for now? Or "general"?
+
+
+    def _update_decision_after_simulation(self, decision: CognitiveDecision, simulation_result: Dict) -> CognitiveDecision:
+        """
+        Updates the decision based on simulation outcome.
+        OPT-1: Guards against ACCEPTing 'Unknown' results.
+        """
+        status = simulation_result.get("status", "FAILURE")
+        result_content = simulation_result.get("result", "")
+        detected_class = simulation_result.get("detected_class", "")
+        
+        if status == "SUCCESS":
+            # OPT-1: Vision Safety Guard
+            if detected_class == "Unknown" or "Unknown Object" in str(result_content):
+                 return CognitiveDecision(
+                     decision_type=DecisionType.REVIEW, 
+                     action="DEFER_REVIEW", 
+                     reason=f"Vision result unresolved: {detected_class}", 
+                     state_snapshot=decision.state_snapshot
+                 )
+
+            return CognitiveDecision(
+                decision_type=DecisionType.ACCEPT, 
+                action="PROMOTE_SIMULATED", 
+                reason=f"Simulation verified: {result_content}", 
+                state_snapshot=decision.state_snapshot
+            )
+        else:
+            return CognitiveDecision(
+                decision_type=DecisionType.REJECT, 
+                action="SUPPRESS_FAILED_SIM", 
+                reason=f"Simulation failed: {result_content}", 
+                state_snapshot=decision.state_snapshot
+            )
+
+    def _learn_experience(self, input_signal: Any, decision: CognitiveDecision):
+        """
+        Store result in ExperienceMemory.
+        OPT-3: Enforce Persistence Threshold (Confidence >= 0.6)
+        """
+        # OPT-3 Check Confidence Logic
+        confidence = decision.state_snapshot.confidence
+        # Threshold 0.6 as per Spec (Phase 1)
+        if confidence < 0.6:
+             # Skip persistence
+             self._trace_event("Experience", "Learning Skipped", {"reason": "Low Confidence", "confidence": confidence}, {})
+             return
+        
+        # Original Logic
+        meta = {
+            "metrics": {
+                "H": decision.state_snapshot.entropy,
+                "C": decision.state_snapshot.confidence,
+                "R": decision.state_snapshot.recall_reliability,
+                "B": decision.state_snapshot.branching_pressure
+            },
+            "timestamp": decision.state_snapshot.timestamp,
+            "decision": decision.decision_type.value
+        }
+        self.experience_memory.log_experience(input_signal, meta)
+        pass

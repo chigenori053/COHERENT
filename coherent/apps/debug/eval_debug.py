@@ -166,4 +166,17 @@ if st.button("Run Debug Trace"):
             st.error("Script Execution Failed")
             
     except Exception as e:
-        st.error(f"Parser/Runner Error: {e}")
+        error_msg = str(e)
+        st.error(f"Parser/Runner Error: {error_msg}")
+        
+        if "Unsupported statement" in error_msg or "problem required" in error_msg:
+             st.info("💡 **Hint**: This Debugger requires a valid CausalScript (DSL).")
+             st.markdown("""
+             **Valid Format Example:**
+             ```yaml
+             problem: Factor 100
+             step: 10 * 10
+             end: done
+             ```
+             *Note: Natural language queries (e.g., "Calculate this") are not supported in this tool. Use the main Simulator for that.*
+             """)
