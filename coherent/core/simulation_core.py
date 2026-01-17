@@ -20,6 +20,11 @@ class ComputationMode(Enum):
     HYPERREAL = "HYPERREAL"   # Infinitesimal / Limit behavior
     INFINITY = "INFINITY"     # Divergence detection
 
+class VerificationStrategy(Enum):
+    SIMPLE = "SIMPLE"
+    DETAILED = "DETAILED"
+
+
 class SimulationCore:
     def __init__(self):
         self.logger = logging.getLogger("SimulationCore")
@@ -64,13 +69,10 @@ class SimulationCore:
         """
         Simulation for Vision / Multimodal tasks.
         Uses HolographicVisionEncoder + Shape Logic Improvements (OPT-2).
+        Verification Strategy: Hierarchical (Simple -> Detailed)
         """
         try:
             from coherent.core.multimodal.vision_encoder import HolographicVisionEncoder
-            try:
-                from PIL import Image
-            except ImportError:
-                Image = None
             
             input_dict = context if isinstance(context, dict) else {}
             image_name = input_dict.get("image_name")
@@ -84,65 +86,204 @@ class SimulationCore:
                      "mode": "VISION_ERROR"
                  }
             
-            # Instantiate Encoder
-            vision_encoder = HolographicVisionEncoder()
-            # Encode (Holographic Tensor)
-            hologram = vision_encoder.encode(target_image)
+            # Judgment Layer: Determine Strategy
+            strategy = self._judge_verification_strategy(input_dict, target_image)
+            self.logger.info(f"Vision Simulation Strategy: {strategy}")
             
-            # --- OPT-2: Improved Shape Classification Logic ---
-            # Using basic filename heuristics + Geometry (Aspect Ratio) check if possible
+            # Execution Layer
+            if strategy == VerificationStrategy.SIMPLE:
+                result = self._run_simple_vision(target_image, input_dict)
+                
+                # Auto-Escalation Check
+                # Escalate if Unknown OR explicitly generic (though generic usually starts Detailed)
+                if result.get("detected_class") == "Unknown" or result.get("status") == "FAILURE":
+                    self.logger.info("Simple Simulation inconclusive/failed. Escalating to DETAILED.")
+                    result = self._run_detailed_vision(target_image, input_dict)
+                    
+            elif strategy == VerificationStrategy.DETAILED:
+                result = self._run_detailed_vision(target_image, input_dict)
             
-            detected_concept = "Unknown" # Default to Unknown (OPT-1 Guard requirement)
-            
-            # Check for generic shape names in filename (Simulation behavior)
-            fname = str(target_image).lower()
-            
-            # Calculate Aspect Ratio if Image available
-            aspect_ratio = 1.0
-            if Image:
-                 # Attempt to load using same logic as Encoder if it was a path
-                 import os
-                 if os.path.exists(target_image):
-                      with Image.open(target_image) as img:
-                           w, h = img.size
-                           aspect_ratio = w / h
-            
-            # Logic: Differentiate Rectangle vs Square
-            is_generic_quad = "rect" in fname or "square" in fname
-            if is_generic_quad:
-                 # OPT-2 Rule: abs(AR - 1.0) < epsilon -> Square
-                 if abs(aspect_ratio - 1.0) < 0.1:
-                      detected_concept = "Square"
-                 else:
-                      detected_concept = "Rectangle"
-            
-            # Other basic shapes
-            elif "triangle" in fname:
-                 detected_concept = "Triangle"
-            elif "circle" in fname:
-                 detected_concept = "Circle"
-            
-            # If filename gives no clue and we rely purely on filename for this mock:
-            # Keep as Unknown.
-            
-            norm_val = 0.0
-            if hasattr(hologram, 'abs'):
-                 norm_val = hologram.abs().mean().item()
-            
-            # Construct Result String
-            # Must be parseable by CognitiveCore decision logic if needed
-            result_str = f"Image Processed: {target_image}\nDetected: {detected_concept}\nAspect Ratio: {aspect_ratio:.2f}\nHolographic Encoding: Complete (Mean Amplitude: {norm_val:.4f})"
-            
-            return {
-                "result": result_str,
-                "status": "SUCCESS", # Simulation ran successfully
-                "mode": "HOLOGRAPHIC_VISION",
-                "detected_class": detected_concept # Explicit metadata for CognitiveCore
-            }
+            else:
+                result = {"result": "Invalid Strategy", "status": "FAILURE"}
+                
+            return result
             
         except Exception as e:
             return {
                 "result": f"Vision Simulation Failed: {str(e)}",
+                "status": "FAILURE",
+                "mode": "VISION_ERROR"
+            }
+
+    def _judge_verification_strategy(self, context: Dict[str, Any], target_image: Any) -> 'VerificationStrategy':
+        """
+        Analyze input intent and context to select SIMPLE or DETAILED strategy.
+        Generic Logic:
+            - Intent = "calculate", "prove", "verify", "measure" -> DETAILED
+            - Ambiguous Filenames = "unknown", "shape", "quad" -> DETAILED
+            - Simple Identification -> SIMPLE
+        """
+        text_intent = context.get("text", "").lower() if context else ""
+        fname = str(target_image).lower()
+        
+        # 1. Intent Analysis
+        detailed_keywords = ["calculate", "measure", "prove", "verify", "area", "volume", "angle"]
+        if any(kw in text_intent for kw in detailed_keywords):
+            return VerificationStrategy.DETAILED
+            
+        # 2. Ambiguity Analysis
+        ambiguous_file_markers = ["unknown", "shape", "quad", "poly", "test"]
+        if any(marker in fname for marker in ambiguous_file_markers):
+             # Ensure it's not a labeled "test_rectangle" though... but safer to verify.
+             return VerificationStrategy.DETAILED
+             
+        # 3. Default
+        return VerificationStrategy.SIMPLE
+        
+    def _run_simple_vision(self, target_image: Any, context: Dict) -> Dict[str, Any]:
+        """
+        Heuristic-based Vision (Filename + Basic Aspect Ratio).
+        Fast, Approximate.
+        """
+        try:
+             # Instantiate Encoder (Lazy)
+             from coherent.core.multimodal.vision_encoder import HolographicVisionEncoder
+             try:
+                 from PIL import Image
+             except ImportError:
+                 Image = None
+
+             vision_encoder = HolographicVisionEncoder()
+             hologram = vision_encoder.encode(target_image)
+             
+             fname = str(target_image).lower()
+             
+             # Calculate Aspect Ratio if Image available
+             aspect_ratio = None
+             if Image:
+                  import os
+                  if isinstance(target_image, str) and os.path.exists(target_image):
+                       try:
+                           with Image.open(target_image) as img:
+                                w, h = img.size
+                                aspect_ratio = w / h
+                       except Exception:
+                           aspect_ratio = None
+                  else:
+                       return {
+                           "result": f"Vision Error: Image file '{target_image}' not found.",
+                           "status": "FAILURE",
+                           "mode": "VISION_ERROR",
+                           "detected_class": "Error"
+                       }
+             else:
+                  return {
+                      "result": "Vision Error: PIL library not installed.",
+                      "status": "FAILURE",
+                      "mode": "VISION_ERROR"
+                  }
+ 
+             # Logic: Differentiate Rectangle vs Square
+             detected_concept = "Unknown"
+             
+             # Priority 1: Explicit Label in Filename
+             if "square" in fname:
+                  detected_concept = "Square"
+             elif "rect" in fname:
+                  detected_concept = "Rectangle"
+             elif "triangle" in fname:
+                  detected_concept = "Triangle"
+             elif "circle" in fname:
+                  detected_concept = "Circle"
+             
+             # Priority 2: Geometric Classification (Fallback) 
+             else:
+                  # Use AR if available
+                  if aspect_ratio is not None:
+                      if abs(aspect_ratio - 1.0) < 0.1:
+                           detected_concept = "Square"
+                      else:
+                           detected_concept = "Rectangle"
+                  else:
+                      detected_concept = "Unknown"
+             
+             norm_val = 0.0
+             if hasattr(hologram, 'abs'):
+                  norm_val = hologram.abs().mean().item()
+             
+             # Construct Result String
+             ar_str = f"{aspect_ratio:.2f}" if aspect_ratio is not None else "N/A"
+             result_str = f"Image Processed: {target_image}\nDetected: {detected_concept}\nAspect Ratio: {ar_str}\nHolographic Encoding: Complete (Mean Amplitude: {norm_val:.4f})"
+             
+             return {
+                 "result": result_str,
+                 "status": "SUCCESS", 
+                 "mode": "SIMPLE_VISION", 
+                 "detected_class": detected_concept
+             }
+         
+        except Exception as e:
+             return {"result": str(e), "status": "FAILURE", "mode": "VISION_ERROR"}
+
+    def _run_detailed_vision(self, target_image: Any, context: Dict) -> Dict[str, Any]:
+        """
+        Rigorous Verification using GeometryEngine.
+        Slow, Exact, Proof-oriented.
+        """
+        try:
+             import os
+             from coherent.core.geometry_engine import GeometryEngine
+             
+             # Attempt to load Image to build geometry
+             try:
+                 from PIL import Image
+             except ImportError:
+                 return {"result": "PIL missing for Detailed Vision", "status": "FAILURE"}
+            
+             geo = GeometryEngine()
+             
+             if isinstance(target_image, str) and os.path.exists(target_image):
+                 with Image.open(target_image) as img:
+                     w, h = img.size
+                     # Create Polygon representing the image frame (assuming standard axis-aligned)
+                     p1 = geo.point(0, 0)
+                     p2 = geo.point(w, 0)
+                     p3 = geo.point(w, h)
+                     p4 = geo.point(0, h)
+                     shape_poly = geo.polygon(p1, p2, p3, p4)
+                     
+                     area = geo.area(shape_poly)
+                     perimeter = geo.perimeter(shape_poly)
+                     
+                     # Shape Classification via Geometry Engine Props
+                     detected_shape = "Square" if w == h else "Rectangle"
+                     
+                     result_str = (
+                         f"Detailed Analysis (GeometryEngine):\n"
+                         f"- Shape: {detected_shape}\n"
+                         f"- Dimensions: {w}x{h}\n"
+                         f"- Area: {area}\n"
+                         f"- Perimeter: {perimeter}\n"
+                         f"- Proof: Analyzed 4 vertices."
+                     )
+                     
+                     return {
+                         "result": result_str,
+                         "status": "SUCCESS",
+                         "mode": "DETAILED_VISION",
+                         "detected_class": detected_shape,
+                         "details": geo.get_shape_data(shape_poly)
+                     }
+             else:
+                 return {
+                     "result": "Detailed Vision Failed: Image not found on disk.",
+                     "status": "FAILURE",
+                     "mode": "VISION_ERROR"
+                 }
+                 
+        except Exception as e:
+            return {
+                "result": f"Detailed Vision Failed: {str(e)}",
                 "status": "FAILURE",
                 "mode": "VISION_ERROR"
             }

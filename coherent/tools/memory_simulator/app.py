@@ -85,9 +85,17 @@ if input_mode == "Multimodal (Text + Image)":
 
 # Construct Signal
 if task_input_image:
+    # Save uploaded file to temp path so Core can read it (Strict Mode)
+    upload_dir = os.path.join(os.path.dirname(__file__), "temp_uploads")
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    file_path = os.path.join(upload_dir, task_input_image.name)
+    with open(file_path, "wb") as f:
+        f.write(task_input_image.getbuffer())
+        
     task_input = {
         "text": task_input_text,
-        "image_name": task_input_image.name,
+        "image_name": os.path.abspath(file_path), # Pass absolute path
         # In real app, we would process bytes here
     }
 else:
