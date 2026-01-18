@@ -107,6 +107,28 @@ Translate the above to Japanese.
     assert result7.parameters.get("target_languages") == ["en", "zh", "es"]
     print("✅ PASS\n")
 
+    print("✅ PASS\n")
+
+    # --- Case 8: 100 Languages (Clamping) ---
+    input8 = "「テスト」を100か国語に翻訳して"
+    print(f"Test Case 8: 100 Languages (Clamping)\nInput: {input8}")
+    result8 = parser.parse(input8)
+    print(f"Result: Params={result8.parameters}")
+
+    # Should clamp to max available (currently 15)
+    assert len(result8.parameters.get("target_languages")) == 15
+    print("✅ PASS\n")
+
+    # --- Case 9: Korean (Explicit) ---
+    # Checking if "んんっくご" was a typo for "韓国語"
+    input9 = "「テスト」を韓国語に翻訳して"
+    print(f"Test Case 9: Korean Check\nInput: {input9}")
+    result9 = parser.parse(input9)
+    print(f"Result: Params={result9.parameters}")
+    
+    assert result9.parameters.get("target_languages") == ["ko"]
+    print("✅ PASS\n")
+
     print("\n🎉 ALL TESTS PASSED!")
 
 if __name__ == "__main__":
