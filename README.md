@@ -54,7 +54,7 @@ The agent responsible for System 2 (deliberate thinking).
 
 ```bash
 # Clone repository
-git clone https://github.com/your-org/COHERENT.git
+git clone https://github.com/chigenori053/COHERENT.git
 cd COHERENT
 
 # Setup environment using uv
@@ -67,19 +67,19 @@ uv sync
 
 ## Usage / 使用方法
 
-### 1. Streamlit UI (Recommended)
-リアルタイムで推論プロセスを可視化できるインタラクティブなUIです。
+### 1. Cognitive Simulator (Streamlit UI)
+リアルタイムで推論プロセスと記憶の干渉（Interference）を可視化できるインタラクティブなUIです。
 
-Interactive UI to visualize the reasoning process in real-time.
+Interactive UI to visualize the reasoning process and memory interference in real-time.
 
 ```bash
-uv run streamlit run coherent/apps/edu/app.py
+uv run streamlit run coherent/tools/memory_simulator/app.py
 ```
-- **Agent Solver**: 自然言語で問題を解かせることができます。（例: "Solve x^2 - 4 = 0", "Factorize x^2 + 5x + 6"）
-- スクリーンショット通りに思考のステップ（Action）が表示されます。
+- **Cognitive Visualization**: テキスト、画像、音声のマルチモーダル入力に対する想起プロセスを波の干渉として可視化します。
+- **Traceability**: 思考の各ステップ（Recall, Reasoning, Decision）をタイムラインで詳細に追跡できます。
 
-- **Agent Solver**: Solve problems using natural language.
-- Visualize reasoning steps (Actions) as seen in screenshots.
+- **Cognitive Visualization**: Visualizes the recall process as wave interference for multimodal inputs (text, image, audio).
+- **Traceability**: Track each reasoning step (Recall, Reasoning, Decision) in detail on the timeline.
 
 ### 2. CLI / Script
 スクリプトから直接エージェントを呼び出すことも可能です。

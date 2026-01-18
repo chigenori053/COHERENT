@@ -181,8 +181,18 @@ if st.session_state.current_trace and st.session_state.current_trace.events:
     st.altair_chart(chart, use_container_width=True)
     
     # 3. Control Slider
-    max_idx = len(events) - 1
-    selected_idx = st.slider("Select Event to Inspect", 0, max_idx, st.session_state.current_event_idx)
+    max_idx = max(0, len(events) - 1)
+    
+    # Ensure session state index is valid for new max
+    if st.session_state.current_event_idx > max_idx:
+        st.session_state.current_event_idx = max_idx
+        
+    selected_idx = 0
+    if max_idx > 0:
+        selected_idx = st.slider("Select Event to Inspect", 0, max_idx, st.session_state.current_event_idx)
+    else:
+        st.caption("Single event trace (Navigation disabled)")
+        
     st.session_state.current_event_idx = selected_idx
     
     current_event = events[selected_idx]

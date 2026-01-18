@@ -21,6 +21,8 @@ dependencies = [
     "plotly>=5.0.0",
     "kaleido>=0.2.1",
     "opencv-python>=4.8.0",
+    "pandas>=2.0.0",
+    "altair>=5.0.0",
 ]
 [project.scripts]
 coherent = "coherent.cli.main:main"

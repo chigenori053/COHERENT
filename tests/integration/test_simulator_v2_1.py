@@ -122,7 +122,7 @@ class TestSimulatorV2_1(unittest.TestCase):
         self._save_logs()
 
     def _save_logs(self):
-        path = "/Users/chigenori/development/COHERENT/coherent-recall-first/docs/simulation_logs_v2_1.json"
+        path = os.path.join(os.getcwd(), "coherent-recall-first/docs/simulation_logs_v2_1.json")
         with open(path, "w") as f:
             json.dump(self.logs, f, indent=2, ensure_ascii=False)
         print(f"\nSimulation Logs saved to: {path}")

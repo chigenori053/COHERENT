@@ -18,13 +18,13 @@ from typing import List, Dict, Any, Optional, Tuple
 from enum import Enum
 from dataclasses import asdict
 
-from coherent.core.simulation_core import SimulationCore
-from coherent.core.memory.experience_manager import ExperienceManager
-from coherent.core.memory.holographic.dynamic import DynamicHolographicMemory
+
 from coherent.core.simulation_core import SimulationCore
 from coherent.core.memory.experience_manager import ExperienceManager
 from coherent.core.memory.holographic.dynamic import DynamicHolographicMemory
 from coherent.core.reasoning_engine import ReasoningEngine, Hypothesis
+from coherent.core.task_gate import TaskGate, TaskType, RouteType, TaskGateDecision
+from coherent.core.fast_executor import FastExecutor
 
 # --- 0. Tracing / Visualization Schema ---
 
@@ -90,6 +90,8 @@ class CognitiveCore:
         self.recall_engine = DynamicHolographicMemory(capacity=100) # Resonance Field
         self.reasoning_engine = ReasoningEngine() # Reasoning Layer
         self.simulation_core = SimulationCore() # Execution Unit
+        self.task_gate = TaskGate() # Task Gate (MVP)
+        self.fast_executor = FastExecutor() # Fast Path Execution
         
         # Hyperparameters (from Spec)
         self.tau = 0.25      # Softmax temperature (Tuned 2026-01-15)
@@ -120,6 +122,40 @@ class CognitiveCore:
         display_content = str(input_signal)[:100] + "..." if len(str(input_signal)) > 100 else str(input_signal)
         self.current_trace = CognitiveTrace(session_id=session_id, input_content=display_content)
         
+        # --- 0. Task Gate Assessment ---
+        gate_decision = self.task_gate.assess_task(input_signal)
+        
+        self._trace_event("TaskGate", f"Decision: {gate_decision.route.name}", {
+            "type": gate_decision.task_type.name,
+            "route": gate_decision.route.name,
+            "score": gate_decision.complexity_score
+        }, {"reason": gate_decision.reason, "escalation": gate_decision.escalation_reason.name})
+
+        if gate_decision.route == RouteType.FAST_PATH:
+            # FAST PATH: Execute via FastExecutor
+            self.logger.info(f"TaskGate: FAST_PATH triggered ({gate_decision.task_type.name})")
+            
+            # Extract text
+            input_text = self.task_gate._extract_text(input_signal)
+            result_text = self.fast_executor.execute(gate_decision.task_type, input_text)
+            
+            # Create a dummy state for Fast Path
+            fast_state = CognitiveStateVector(
+                entropy=0.0, confidence=1.0, recall_reliability=1.0, 
+                branching_pressure=0.0, margin_confidence=1.0, concentration_confidence=1.0
+            )
+            
+            decision = CognitiveDecision(
+                decision_type=DecisionType.ACCEPT,
+                action="FAST_EXECUTE",
+                reason=f"Fast Path Result: {result_text}",
+                state_snapshot=fast_state
+            )
+            self.current_trace.final_decision = decision
+            return decision
+
+        # --- FULL PATH (Existing Logic) ---
+
         # 1. Recall & Resonance
         # Assume input_signal is converted to vector. 
         query_vec = self._vectorize(input_signal)
