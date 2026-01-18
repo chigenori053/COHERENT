@@ -34,7 +34,7 @@ def run_tests():
     
     assert result1.transform_type == TransformType.TRANSLATION
     assert result1.source_text == "私は、スーパーカーを運転するのが好きだ"
-    assert result1.parameters.get("target_languages") == ["en", "it", "zh", "es", "ko"]
+    assert result1.parameters.get("target_languages") == ["en", "zh", "es", "fr", "de"]
     print("✅ PASS\n")
 
 
@@ -84,6 +84,27 @@ Translate the above to Japanese.
     print(f"Result: Params={result5.parameters}")
     
     assert result5.parameters.get("target_languages") == ["en"]
+    print("✅ PASS\n")
+
+    # --- Case 6: 10 Languages (Generalized) ---
+    input6 = "「テスト」を10か国語に翻訳して"
+    print(f"Test Case 6: 10 Languages\nInput: {input6}")
+    result6 = parser.parse(input6)
+    print(f"Result: Params={result6.parameters}")
+    
+    assert len(result6.parameters.get("target_languages")) == 10
+    # Check if first 3 are common ones
+    assert result6.parameters.get("target_languages")[:3] == ["en", "zh", "es"]
+    print("✅ PASS\n")
+
+    # --- Case 7: 3 Languages ---
+    input7 = "Translate 'Hello' to 3 languages"
+    print(f"Test Case 7: 3 Languages\nInput: {input7}")
+    result7 = parser.parse(input7)
+    print(f"Result: Params={result7.parameters}")
+
+    assert len(result7.parameters.get("target_languages")) == 3
+    assert result7.parameters.get("target_languages") == ["en", "zh", "es"]
     print("✅ PASS\n")
 
     print("\n🎉 ALL TESTS PASSED!")
