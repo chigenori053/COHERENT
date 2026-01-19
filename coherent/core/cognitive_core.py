@@ -25,6 +25,7 @@ from coherent.core.memory.holographic.dynamic import DynamicHolographicMemory
 from coherent.core.reasoning_engine import ReasoningEngine, Hypothesis
 from coherent.core.task_gate import TaskGate, TaskType, RouteType, TaskGateDecision
 from coherent.core.fast_executor import FastExecutor
+from coherent.core.observation_core import ObservationCore, InferenceEvent
 
 # --- 0. Tracing / Visualization Schema ---
 
@@ -92,6 +93,7 @@ class CognitiveCore:
         self.simulation_core = SimulationCore() # Execution Unit
         self.task_gate = TaskGate() # Task Gate (MVP)
         self.fast_executor = FastExecutor() # Fast Path Execution
+        self.observation_core = ObservationCore() # Observation Layer
         
         # Hyperparameters (from Spec)
         self.tau = 0.25      # Softmax temperature (Tuned 2026-01-15)
@@ -232,6 +234,10 @@ class CognitiveCore:
             self._trace_event("Experience", "Learned Experience", {"persisted": decision.state_snapshot.confidence >= 0.6}, {})
             
         self.current_trace.final_decision = decision
+        
+        # 7. Observation (Non-intrusive)
+        self._observe_process(input_signal, decision, session_id)
+        
         return decision
 
     def _trace_event(self, step: str, desc: str, metrics: Dict, details: Dict):
@@ -485,3 +491,56 @@ class CognitiveCore:
         }
         self.experience_memory.log_experience(input_signal, meta)
         pass
+
+    def _observe_process(self, input_signal: Any, decision: CognitiveDecision, session_id: str):
+        """
+        Dispatch event to ObservationCore.
+        Does not affect control flow.
+        """
+        try:
+            # 1. Construct Event
+            # Extract simple metrics
+            state = decision.state_snapshot
+            
+            # Helper to safely serialize input
+            input_content = str(input_signal)[:200]
+            
+            # Determine modality
+            modality = "text"
+            if isinstance(input_signal, dict) and ("image" in input_signal or "image_name" in input_signal):
+                modality = "multimodal"
+            
+            simulation_active = decision.action == "PROMOTE_SIMULATED" or "SIM" in decision.action
+            
+            event = InferenceEvent(
+                event_id=str(uuid.uuid4()),
+                session_id=session_id,
+                timestamp=datetime.datetime.now().timestamp(),
+                input_content=input_content,
+                context_tags=[], # Context tags can be expanded later
+                input_modality=modality,
+                recall_source="Holographic", # Default for now
+                recall_score=state.recall_reliability, # Using R as proxy for score in MVP
+                decision_type=decision.decision_type.name,
+                confidence_score=state.confidence,
+                entropy_score=state.entropy,
+                final_action=decision.action,
+                details={
+                    "branching_pressure": state.branching_pressure,
+                    "simulation_active": simulation_active,
+                    "reason": decision.reason
+                }
+            )
+            
+            # 2. Observe
+            obs_result = self.observation_core.observe(event)
+            
+            # 3. Trace Observation (for Simulator/UI)
+            self._trace_event("Observation", "State Observed", {
+                "states": [s.value for s in obs_result.states],
+                "event_id": obs_result.event_id
+            }, {"raw_states": [s.name for s in obs_result.states]})
+            
+        except Exception as e:
+            self.logger.error(f"Failed to observe process: {e}")
+

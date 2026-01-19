@@ -1,0 +1,302 @@
+[
+  {
+    "theta": 0.95,
+    "level": "L0",
+    "input_expr": "x + y",
+    "recall_success": true,
+    "resonance_score": 1.0,
+    "compute_executed": false,
+    "compute_steps": 0,
+    "decision_label": "ACCEPT"
+  },
+  {
+    "theta": 0.95,
+    "level": "L1",
+    "input_expr": "5b + 3a",
+    "recall_success": false,
+    "resonance_score": 0.92,
+    "compute_executed": true,
+    "compute_steps": 10,
+    "decision_label": "ACCEPT"
+  },
+  {
+    "theta": 0.95,
+    "level": "L2",
+    "input_expr": "2x",
+    "recall_success": false,
+    "resonance_score": 0.82,
+    "compute_executed": true,
+    "compute_steps": 10,
+    "decision_label": "ACCEPT"
+  },
+  {
+    "theta": 0.95,
+    "level": "L3",
+    "input_expr": "(x + y) + z",
+    "recall_success": false,
+    "resonance_score": 0.72,
+    "compute_executed": true,
+    "compute_steps": 10,
+    "decision_label": "ACCEPT"
+  },
+  {
+    "theta": 0.95,
+    "level": "L4",
+    "input_expr": "2x + y",
+    "recall_success": false,
+    "resonance_score": 0.62,
+    "compute_executed": true,
+    "compute_steps": 10,
+    "decision_label": "ACCEPT"
+  },
+  {
+    "theta": 0.9,
+    "level": "L0",
+    "input_expr": "x + y",
+    "recall_success": true,
+    "resonance_score": 1.0,
+    "compute_executed": false,
+    "compute_steps": 0,
+    "decision_label": "ACCEPT"
+  },
+  {
+    "theta": 0.9,
+    "level": "L1",
+    "input_expr": "5b + 3a",
+    "recall_success": true,
+    "resonance_score": 0.92,
+    "compute_executed": false,
+    "compute_steps": 0,
+    "decision_label": "ACCEPT"
+  },
+  {
+    "theta": 0.9,
+    "level": "L2",
+    "input_expr": "2x",
+    "recall_success": false,
+    "resonance_score": 0.82,
+    "compute_executed": true,
+    "compute_steps": 10,
+    "decision_label": "ACCEPT"
+  },
+  {
+    "theta": 0.9,
+    "level": "L3",
+    "input_expr": "(x + y) + z",
+    "recall_success": false,
+    "resonance_score": 0.72,
+    "compute_executed": true,
+    "compute_steps": 10,
+    "decision_label": "ACCEPT"
+  },
+  {
+    "theta": 0.9,
+    "level": "L4",
+    "input_expr": "2x + y",
+    "recall_success": false,
+    "resonance_score": 0.62,
+    "compute_executed": true,
+    "compute_steps": 10,
+    "decision_label": "ACCEPT"
+  },
+  {
+    "theta": 0.85,
+    "level": "L0",
+    "input_expr": "x + y",
+    "recall_success": true,
+    "resonance_score": 1.0,
+    "compute_executed": false,
+    "compute_steps": 0,
+    "decision_label": "ACCEPT"
+  },
+  {
+    "theta": 0.85,
+    "level": "L1",
+    "input_expr": "5b + 3a",
+    "recall_success": true,
+    "resonance_score": 0.92,
+    "compute_executed": false,
+    "compute_steps": 0,
+    "decision_label": "ACCEPT"
+  },
+  {
+    "theta": 0.85,
+    "level": "L2",
+    "input_expr": "2x",
+    "recall_success": false,
+    "resonance_score": 0.82,
+    "compute_executed": true,
+    "compute_steps": 10,
+    "decision_label": "ACCEPT"
+  },
+  {
+    "theta": 0.85,
+    "level": "L3",
+    "input_expr": "(x + y) + z",
+    "recall_success": false,
+    "resonance_score": 0.72,
+    "compute_executed": true,
+    "compute_steps": 10,
+    "decision_label": "ACCEPT"
+  },
+  {
+    "theta": 0.85,
+    "level": "L4",
+    "input_expr": "2x + y",
+    "recall_success": false,
+    "resonance_score": 0.62,
+    "compute_executed": true,
+    "compute_steps": 10,
+    "decision_label": "ACCEPT"
+  },
+  {
+    "theta": 0.8,
+    "level": "L0",
+    "input_expr": "x + y",
+    "recall_success": true,
+    "resonance_score": 1.0,
+    "compute_executed": false,
+    "compute_steps": 0,
+    "decision_label": "ACCEPT"
+  },
+  {
+    "theta": 0.8,
+    "level": "L1",
+    "input_expr": "5b + 3a",
+    "recall_success": true,
+    "resonance_score": 0.92,
+    "compute_executed": false,
+    "compute_steps": 0,
+    "decision_label": "ACCEPT"
+  },
+  {
+    "theta": 0.8,
+    "level": "L2",
+    "input_expr": "2x",
+    "recall_success": true,
+    "resonance_score": 0.82,
+    "compute_executed": false,
+    "compute_steps": 0,
+    "decision_label": "ACCEPT"
+  },
+  {
+    "theta": 0.8,
+    "level": "L3",
+    "input_expr": "(x + y) + z",
+    "recall_success": false,
+    "resonance_score": 0.72,
+    "compute_executed": true,
+    "compute_steps": 10,
+    "decision_label": "ACCEPT"
+  },
+  {
+    "theta": 0.8,
+    "level": "L4",
+    "input_expr": "2x + y",
+    "recall_success": false,
+    "resonance_score": 0.62,
+    "compute_executed": true,
+    "compute_steps": 10,
+    "decision_label": "ACCEPT"
+  },
+  {
+    "theta": 0.75,
+    "level": "L0",
+    "input_expr": "x + y",
+    "recall_success": true,
+    "resonance_score": 1.0,
+    "compute_executed": false,
+    "compute_steps": 0,
+    "decision_label": "ACCEPT"
+  },
+  {
+    "theta": 0.75,
+    "level": "L1",
+    "input_expr": "5b + 3a",
+    "recall_success": true,
+    "resonance_score": 0.92,
+    "compute_executed": false,
+    "compute_steps": 0,
+    "decision_label": "ACCEPT"
+  },
+  {
+    "theta": 0.75,
+    "level": "L2",
+    "input_expr": "2x",
+    "recall_success": true,
+    "resonance_score": 0.82,
+    "compute_executed": false,
+    "compute_steps": 0,
+    "decision_label": "ACCEPT"
+  },
+  {
+    "theta": 0.75,
+    "level": "L3",
+    "input_expr": "(x + y) + z",
+    "recall_success": false,
+    "resonance_score": 0.72,
+    "compute_executed": true,
+    "compute_steps": 10,
+    "decision_label": "ACCEPT"
+  },
+  {
+    "theta": 0.75,
+    "level": "L4",
+    "input_expr": "2x + y",
+    "recall_success": false,
+    "resonance_score": 0.62,
+    "compute_executed": true,
+    "compute_steps": 10,
+    "decision_label": "ACCEPT"
+  },
+  {
+    "theta": 0.7,
+    "level": "L0",
+    "input_expr": "x + y",
+    "recall_success": true,
+    "resonance_score": 1.0,
+    "compute_executed": false,
+    "compute_steps": 0,
+    "decision_label": "ACCEPT"
+  },
+  {
+    "theta": 0.7,
+    "level": "L1",
+    "input_expr": "5b + 3a",
+    "recall_success": true,
+    "resonance_score": 0.92,
+    "compute_executed": false,
+    "compute_steps": 0,
+    "decision_label": "ACCEPT"
+  },
+  {
+    "theta": 0.7,
+    "level": "L2",
+    "input_expr": "2x",
+    "recall_success": true,
+    "resonance_score": 0.82,
+    "compute_executed": false,
+    "compute_steps": 0,
+    "decision_label": "ACCEPT"
+  },
+  {
+    "theta": 0.7,
+    "level": "L3",
+    "input_expr": "(x + y) + z",
+    "recall_success": true,
+    "resonance_score": 0.72,
+    "compute_executed": false,
+    "compute_steps": 0,
+    "decision_label": "ACCEPT"
+  },
+  {
+    "theta": 0.7,
+    "level": "L4",
+    "input_expr": "2x + y",
+    "recall_success": false,
+    "resonance_score": 0.62,
+    "compute_executed": true,
+    "compute_steps": 10,
+    "decision_label": "ACCEPT"
+  }
+]

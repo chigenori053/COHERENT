@@ -147,7 +147,7 @@ if st.session_state.current_trace and st.session_state.current_trace.events:
     
     # 1. Prepare Data for Altair
     # Map Steps to meaningful Y-axis
-    step_order = ["Recall", "Reasoning", "Decision", "Simulation", "Experience"]
+    step_order = ["Recall", "Reasoning", "Decision", "Simulation", "Experience", "Observation"]
     
     timeline_data = []
     for i, evt in enumerate(events):
@@ -250,6 +250,23 @@ if current_event:
              R = np.sqrt(X**2 + Y**2)
              width = 0.2 + (entropy * 2.0) # Wider if execution unclear
              field += 1.0 * np.exp(-width * R**2)
+             
+        elif current_event.step == "Observation":
+             # Observation Field: "Eye" or "Scanner" metaphor
+             # Ring shape
+             R = np.sqrt(X**2 + Y**2)
+             states = current_event.metrics.get("states", [])
+             
+             # Base Ring
+             field += 0.8 * np.exp(-2.0 * (R - 5.0)**2) 
+             
+             # If Unstable / Uncertainty, add noise
+             if "HIGH_UNCERTAINTY" in states:
+                 field += 0.3 * np.random.randn(size, size)
+                 
+             # If Stable, add central clear point
+             if "STRUCTURALLY_STABLE" in states:
+                 field += 1.0 * np.exp(-0.5 * R**2) * 1j
              
         # Draw
         rgb = complex_to_hsv_rgb(field)

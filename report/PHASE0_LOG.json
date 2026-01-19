@@ -1,0 +1,113 @@
+{
+  "title": "Phase 0: Core Stabilization Report",
+  "categories": {
+    "Category A: Commutativity": [
+      {
+        "input": "x + y",
+        "norm": "x + y",
+        "pattern": "Add(VAR, VAR)",
+        "hash": "7d1be32037055d3b370bc3a963ba5638ea6174a85d3e915e464aba00145d715a",
+        "nodes": [
+          "Name",
+          "Name",
+          "Add"
+        ]
+      },
+      {
+        "input": "y + x",
+        "norm": "y + x",
+        "pattern": "Add(VAR, VAR)",
+        "hash": "7d1be32037055d3b370bc3a963ba5638ea6174a85d3e915e464aba00145d715a",
+        "nodes": [
+          "Name",
+          "Name",
+          "Add"
+        ]
+      }
+    ],
+    "Category B: Associativity": [
+      {
+        "input": "(x + y) + z",
+        "norm": "(x + y) + z",
+        "pattern": "Add(Add(VAR, VAR), VAR)",
+        "hash": "948b059fba8fc7cbfba0cb57d826834fb2343dccb75787f7f884459eb181cf60",
+        "nodes": [
+          "Name",
+          "Name",
+          "Add",
+          "Name",
+          "Add"
+        ]
+      },
+      {
+        "input": "x + (y + z)",
+        "norm": "x + (y + z)",
+        "pattern": "Add(VAR, Add(VAR, VAR))",
+        "hash": "450ccbadf2f9ffdce08b62f620182c4d1a21c0dafaa68b6e6907da854a037e9a",
+        "nodes": [
+          "Name",
+          "Name",
+          "Name",
+          "Add",
+          "Add"
+        ]
+      }
+    ],
+    "Category C: Equivalence Reduction": [
+      {
+        "input": "x + x",
+        "norm": "x + x",
+        "pattern": "Add(VAR, VAR)",
+        "hash": "7d1be32037055d3b370bc3a963ba5638ea6174a85d3e915e464aba00145d715a",
+        "nodes": [
+          "Name",
+          "Name",
+          "Add"
+        ]
+      },
+      {
+        "input": "2x",
+        "norm": "2*x",
+        "pattern": "Mult(INT(2), VAR)",
+        "hash": "301a353354b2a97f52fe5c0073acbe7dfeb735c5e15438619988edca1958263c",
+        "nodes": [
+          "Constant",
+          "Name",
+          "Mult"
+        ]
+      }
+    ],
+    "Category D: Coefficient Arrangement": [
+      {
+        "input": "3a + 5b",
+        "norm": "3*a + 5*b",
+        "pattern": "Add(Mult(INT(3), VAR), Mult(INT(5), VAR))",
+        "hash": "5b4ba64dfa0ba095a2021ec78ba8fee806296ae8bcf108ba5aa17632bc2838e5",
+        "nodes": [
+          "Constant",
+          "Name",
+          "Mult",
+          "Constant",
+          "Name",
+          "Mult",
+          "Add"
+        ]
+      },
+      {
+        "input": "5b + 3a",
+        "norm": "5*b + 3*a",
+        "pattern": "Add(Mult(INT(5), VAR), Mult(INT(3), VAR))",
+        "hash": "c9e88f96113e56cae7506934d0b22b0677901dc4e444dd887646e8a71f6ea744",
+        "nodes": [
+          "Constant",
+          "Name",
+          "Mult",
+          "Constant",
+          "Name",
+          "Mult",
+          "Add"
+        ]
+      }
+    ]
+  }
+}
