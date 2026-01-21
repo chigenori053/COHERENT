@@ -1,0 +1,58 @@
+{
+  "test_id": "PHASE_D_2_SUITE",
+  "results": [
+    {
+      "test_id": "D2-TC-01",
+      "forward_test": {
+        "passed": true,
+        "output_text": "温度が高いときは、冷却を実行します。"
+      },
+      "reverse_test": {
+        "passed": true,
+        "semantic_diff": []
+      },
+      "final_result": "PASS"
+    },
+    {
+      "test_id": "D2-TC-02",
+      "forward_test": {
+        "passed": true,
+        "output_text": "電池が20%より少なくなったら、電気を節約するようにします。"
+      },
+      "reverse_test": {
+        "passed": true,
+        "semantic_diff": []
+      },
+      "final_result": "PASS"
+    },
+    {
+      "test_id": "D2-TC-03",
+      "forward_test": {
+        "passed": true,
+        "output_text": "バッテリー残量が20%未満の場合、省電力モードへ遷移する。"
+      },
+      "reverse_test": {
+        "passed": true,
+        "semantic_diff": []
+      },
+      "final_result": "PASS"
+    },
+    {
+      "test_id": "D2-TC-04",
+      "forward_test": {
+        "passed": true,
+        "output_text": "冷却を実行する可能性があります。"
+      },
+      "reverse_test": {
+        "passed": true,
+        "semantic_diff": []
+      },
+      "final_result": "PASS"
+    }
+  ],
+  "summary": {
+    "total": 4,
+    "passed": 4,
+    "failed": 0
+  }
+}

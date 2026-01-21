@@ -1,0 +1,205 @@
+{
+  "summary": "Phase C.5 Structural Verification",
+  "results": [
+    {
+      "id": "A-1",
+      "text": "温度が高いときはファンを回してください。",
+      "passed": true,
+      "reason": "OK",
+      "output": {
+        "intent": "INSTRUCT",
+        "semantic_blocks": [
+          {
+            "role": "INTENT",
+            "content": "COOLING_ACTION",
+            "conditions": [
+              {
+                "subject": "TEMPERATURE",
+                "predicate": "IS",
+                "value": "HIGH",
+                "polarity": true
+              }
+            ],
+            "certainty": "CERTAIN"
+          }
+        ],
+        "missing_information": [],
+        "confidence": 0.0,
+        "recall_used": false
+      }
+    },
+    {
+      "id": "B-1",
+      "text": "雨が降ったら試合は中止。ただし屋内なら除く。",
+      "passed": true,
+      "reason": "OK",
+      "output": {
+        "intent": "INSTRUCT",
+        "semantic_blocks": [
+          {
+            "role": "INTENT",
+            "content": "MATCH_STATUS",
+            "conditions": [
+              {
+                "subject": "WEATHER",
+                "predicate": "IS",
+                "value": "RAIN",
+                "polarity": true
+              }
+            ],
+            "certainty": "CERTAIN"
+          },
+          {
+            "role": "EXCEPTION",
+            "content": "CONDITION_REVERSAL",
+            "conditions": [
+              {
+                "subject": "LOCATION",
+                "predicate": "IS",
+                "value": "INDOOR",
+                "polarity": false
+              }
+            ],
+            "metadata": {
+              "raw_text": "屋内なら除く。"
+            }
+          }
+        ],
+        "missing_information": [],
+        "confidence": 0.0,
+        "recall_used": false
+      }
+    },
+    {
+      "id": "B-3",
+      "text": "月曜日は出社。ただし祝日の場合は在宅。",
+      "passed": true,
+      "reason": "OK",
+      "output": {
+        "intent": "INSTRUCT",
+        "semantic_blocks": [
+          {
+            "role": "INTENT",
+            "content": "GO_TO_OFFICE",
+            "conditions": [
+              {
+                "subject": "DAY_OF_WEEK",
+                "predicate": "IS",
+                "value": "MONDAY",
+                "polarity": true
+              }
+            ],
+            "certainty": "CERTAIN"
+          },
+          {
+            "role": "EXCEPTION",
+            "content": "CONDITION_REVERSAL",
+            "conditions": [
+              {
+                "subject": "HOLIDAY",
+                "predicate": "IS",
+                "value": "UNKNOWN",
+                "polarity": false
+              }
+            ],
+            "metadata": {
+              "raw_text": "祝日の場合は在宅。"
+            }
+          }
+        ],
+        "missing_information": [],
+        "confidence": 0.0,
+        "recall_used": false
+      }
+    },
+    {
+      "id": "C-1",
+      "text": "終わったら送ってください。",
+      "passed": true,
+      "reason": "OK",
+      "output": {
+        "intent": "INSTRUCT",
+        "semantic_blocks": [
+          {
+            "role": "INTENT",
+            "content": "SEND",
+            "conditions": [
+              {
+                "subject": "UNKNOWN",
+                "predicate": "IS",
+                "value": "UNKNOWN",
+                "polarity": true
+              }
+            ],
+            "certainty": "CERTAIN"
+          }
+        ],
+        "missing_information": [
+          {
+            "type": "EVENT",
+            "description": "何が完了した状態か不明"
+          }
+        ],
+        "confidence": 0.0,
+        "recall_used": false
+      }
+    },
+    {
+      "id": "C-2",
+      "text": "いつもの手順で進めて。",
+      "passed": true,
+      "reason": "OK",
+      "output": {
+        "intent": "INSTRUCT",
+        "semantic_blocks": [
+          {
+            "role": "OBJECT",
+            "content": "UNKNOWN",
+            "certainty": "UNKNOWN"
+          },
+          {
+            "role": "INTENT",
+            "content": "ACTION_UNKNOWN",
+            "conditions": [],
+            "certainty": "CERTAIN"
+          }
+        ],
+        "missing_information": [
+          {
+            "type": "CRITERIA",
+            "description": "手順が不明"
+          }
+        ],
+        "confidence": 0.0,
+        "recall_used": false
+      }
+    },
+    {
+      "id": "N-1",
+      "text": "バッテリーが20%未満なら省電力にする。",
+      "passed": true,
+      "reason": "OK",
+      "output": {
+        "intent": "INSTRUCT",
+        "semantic_blocks": [
+          {
+            "role": "INTENT",
+            "content": "POWER_SAVE_MODE",
+            "conditions": [
+              {
+                "subject": "BATTERY",
+                "predicate": "LT",
+                "value": 20,
+                "polarity": true
+              }
+            ],
+            "certainty": "CERTAIN"
+          }
+        ],
+        "missing_information": [],
+        "confidence": 0.0,
+        "recall_used": false
+      }
+    }
+  ]
+}

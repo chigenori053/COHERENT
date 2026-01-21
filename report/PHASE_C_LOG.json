@@ -1,0 +1,439 @@
+{
+  "summary": "Phase C Verification",
+  "results": [
+    {
+      "id": "A-1",
+      "text": "温度が高いときはファンを回してください。",
+      "passed": true,
+      "reason": "OK",
+      "output": {
+        "intent": "INSTRUCT",
+        "semantic_blocks": [
+          {
+            "role": "ACTION",
+            "content": "COOLING_ACTION",
+            "conditions": [
+              {
+                "type": "IF",
+                "value": "TEMP_HIGH"
+              }
+            ],
+            "certainty": "CERTAIN"
+          }
+        ],
+        "recall_used": true,
+        "confidence": 1.0
+      }
+    },
+    {
+      "id": "A-2",
+      "text": "気温が一定以上なら送風を開始する。",
+      "passed": true,
+      "reason": "OK",
+      "output": {
+        "intent": "INSTRUCT",
+        "semantic_blocks": [
+          {
+            "role": "ACTION",
+            "content": "COOLING_ACTION",
+            "conditions": [
+              {
+                "type": "IF",
+                "value": "TEMP_HIGH"
+              }
+            ],
+            "certainty": "CERTAIN"
+          }
+        ],
+        "recall_used": true,
+        "confidence": 1.0
+      }
+    },
+    {
+      "id": "A-3",
+      "text": "暑い場合のみファンを動作させる。",
+      "passed": true,
+      "reason": "OK",
+      "output": {
+        "intent": "INSTRUCT",
+        "semantic_blocks": [
+          {
+            "role": "ACTION",
+            "content": "COOLING_ACTION",
+            "conditions": [
+              {
+                "type": "IF",
+                "value": "TEMP_HIGH"
+              }
+            ],
+            "certainty": "CERTAIN"
+          }
+        ],
+        "recall_used": true,
+        "confidence": 1.0
+      }
+    },
+    {
+      "id": "A-4",
+      "text": "高温時に冷却装置を作動させよ。",
+      "passed": true,
+      "reason": "OK",
+      "output": {
+        "intent": "INSTRUCT",
+        "semantic_blocks": [
+          {
+            "role": "ACTION",
+            "content": "COOLING_ACTION",
+            "conditions": [
+              {
+                "type": "IF",
+                "value": "TEMP_HIGH"
+              }
+            ],
+            "certainty": "CERTAIN"
+          }
+        ],
+        "recall_used": true,
+        "confidence": 1.0
+      }
+    },
+    {
+      "id": "B-1",
+      "text": "雨が降ったら試合は中止。ただし屋内なら除く。",
+      "passed": true,
+      "reason": "OK",
+      "output": {
+        "intent": "INSTRUCT",
+        "semantic_blocks": [
+          {
+            "role": "ACTION",
+            "content": "MATCH_STATUS",
+            "conditions": [
+              {
+                "type": "EXCEPT",
+                "value": "屋内なら除く。"
+              }
+            ],
+            "certainty": "CERTAIN"
+          }
+        ],
+        "assumptions": [],
+        "missing_information": [],
+        "recall_used": false,
+        "confidence": 0.0
+      }
+    },
+    {
+      "id": "B-2",
+      "text": "試合は雨天中止だが、屋内開催の場合は続行。",
+      "passed": true,
+      "reason": "OK",
+      "output": {
+        "intent": "INSTRUCT",
+        "semantic_blocks": [
+          {
+            "role": "ACTION",
+            "content": "MATCH_STATUS",
+            "conditions": [
+              {
+                "type": "EXCEPT",
+                "value": "屋内開催の場合は続行。"
+              }
+            ],
+            "certainty": "CERTAIN"
+          }
+        ],
+        "assumptions": [],
+        "missing_information": [],
+        "recall_used": false,
+        "confidence": 0.0
+      }
+    },
+    {
+      "id": "B-3",
+      "text": "月曜日は出社。ただし祝日の場合は在宅。",
+      "passed": true,
+      "reason": "OK",
+      "output": {
+        "intent": "INSTRUCT",
+        "semantic_blocks": [
+          {
+            "role": "ACTION",
+            "content": "GO_TO_OFFICE",
+            "conditions": [
+              {
+                "type": "EXCEPT",
+                "value": "祝日の場合は在宅。"
+              }
+            ],
+            "certainty": "CERTAIN"
+          }
+        ],
+        "assumptions": [],
+        "missing_information": [],
+        "recall_used": false,
+        "confidence": 0.0
+      }
+    },
+    {
+      "id": "C-1",
+      "text": "終わったら送ってください。",
+      "passed": true,
+      "reason": "OK",
+      "output": {
+        "intent": "INSTRUCT",
+        "semantic_blocks": [
+          {
+            "role": "TARGET",
+            "content": "UNKNOWN",
+            "conditions": [
+              "CONDITION_UNKNOWN"
+            ],
+            "certainty": "UNKNOWN"
+          }
+        ],
+        "assumptions": [],
+        "missing_information": [
+          "終わったら"
+        ],
+        "recall_used": false,
+        "confidence": 0.5
+      }
+    },
+    {
+      "id": "C-2",
+      "text": "いつもの手順で進めて。",
+      "passed": true,
+      "reason": "OK",
+      "output": {
+        "intent": "INSTRUCT",
+        "semantic_blocks": [
+          {
+            "role": "TARGET",
+            "content": "UNKNOWN",
+            "conditions": [
+              "CONDITION_UNKNOWN"
+            ],
+            "certainty": "UNKNOWN"
+          }
+        ],
+        "assumptions": [],
+        "missing_information": [
+          "いつもの"
+        ],
+        "recall_used": false,
+        "confidence": 0.5
+      }
+    },
+    {
+      "id": "C-3",
+      "text": "それを適切に処理してください。",
+      "passed": true,
+      "reason": "OK",
+      "output": {
+        "intent": "INSTRUCT",
+        "semantic_blocks": [
+          {
+            "role": "CONSTRAINT",
+            "content": "適切",
+            "conditions": [],
+            "certainty": "UNCERTAIN"
+          },
+          {
+            "role": "TARGET",
+            "content": "UNKNOWN",
+            "conditions": [
+              "CONDITION_UNKNOWN"
+            ],
+            "certainty": "UNKNOWN"
+          }
+        ],
+        "assumptions": [],
+        "missing_information": [
+          "それ"
+        ],
+        "recall_used": false,
+        "confidence": 0.5
+      }
+    },
+    {
+      "id": "D-1",
+      "text": "安全な方法で処理してください。",
+      "passed": true,
+      "reason": "OK",
+      "output": {
+        "intent": "INSTRUCT",
+        "semantic_blocks": [
+          {
+            "role": "CONSTRAINT",
+            "content": "安全な",
+            "conditions": [],
+            "certainty": "UNCERTAIN"
+          }
+        ],
+        "assumptions": [],
+        "missing_information": [],
+        "recall_used": false,
+        "confidence": 0.0
+      }
+    },
+    {
+      "id": "D-2",
+      "text": "正しいやり方で進めて。",
+      "passed": true,
+      "reason": "OK",
+      "output": {
+        "intent": "INSTRUCT",
+        "semantic_blocks": [
+          {
+            "role": "CONSTRAINT",
+            "content": "正しい",
+            "conditions": [],
+            "certainty": "UNCERTAIN"
+          }
+        ],
+        "assumptions": [],
+        "missing_information": [],
+        "recall_used": false,
+        "confidence": 0.0
+      }
+    },
+    {
+      "id": "F-1",
+      "text": "なぜこの処理を行うのですか？",
+      "passed": true,
+      "reason": "OK",
+      "output": {
+        "intent": "QUERY",
+        "semantic_blocks": [
+          {
+            "role": "ACTION",
+            "content": "EXECUTE_PROCESS",
+            "conditions": [],
+            "certainty": "CERTAIN"
+          }
+        ],
+        "assumptions": [],
+        "missing_information": [],
+        "recall_used": false,
+        "confidence": 0.0
+      }
+    },
+    {
+      "id": "F-3",
+      "text": "処理を実行してください。",
+      "passed": true,
+      "reason": "OK",
+      "output": {
+        "intent": "INSTRUCT",
+        "semantic_blocks": [
+          {
+            "role": "ACTION",
+            "content": "EXECUTE_PROCESS",
+            "conditions": [],
+            "certainty": "CERTAIN"
+          }
+        ],
+        "assumptions": [],
+        "missing_information": [],
+        "recall_used": false,
+        "confidence": 0.0
+      }
+    },
+    {
+      "id": "G-1",
+      "text": "可能であれば対応してください。",
+      "passed": true,
+      "reason": "OK",
+      "output": {
+        "intent": "INSTRUCT",
+        "semantic_blocks": [
+          {
+            "role": "ACTION",
+            "content": "PENDING_JUDGMENT",
+            "conditions": [
+              "DEPENDS_ON_SITUATION"
+            ],
+            "certainty": "UNKNOWN"
+          }
+        ],
+        "assumptions": [],
+        "missing_information": [],
+        "recall_used": false,
+        "confidence": 0.0
+      }
+    },
+    {
+      "id": "E-1",
+      "text": "気温が高い場合、冷却を開始する。",
+      "passed": true,
+      "reason": "Recall OK",
+      "output": {
+        "intent": "INSTRUCT",
+        "semantic_blocks": [
+          {
+            "role": "ACTION",
+            "content": "COOLING_ACTION",
+            "conditions": [
+              {
+                "type": "IF",
+                "value": "TEMP_HIGH"
+              }
+            ],
+            "certainty": "CERTAIN"
+          }
+        ],
+        "recall_used": true,
+        "confidence": 1.0
+      }
+    },
+    {
+      "id": "E-2",
+      "text": "暑いときは装置を作動させる。",
+      "passed": true,
+      "reason": "Recall OK",
+      "output": {
+        "intent": "INSTRUCT",
+        "semantic_blocks": [
+          {
+            "role": "ACTION",
+            "content": "COOLING_ACTION",
+            "conditions": [
+              {
+                "type": "IF",
+                "value": "TEMP_HIGH"
+              }
+            ],
+            "certainty": "CERTAIN"
+          }
+        ],
+        "recall_used": true,
+        "confidence": 1.0
+      }
+    },
+    {
+      "id": "E-3",
+      "text": "高温環境では冷却処理を有効化する。",
+      "passed": true,
+      "reason": "Recall OK",
+      "output": {
+        "intent": "INSTRUCT",
+        "semantic_blocks": [
+          {
+            "role": "ACTION",
+            "content": "COOLING_ACTION",
+            "conditions": [
+              {
+                "type": "IF",
+                "value": "TEMP_HIGH"
+              }
+            ],
+            "certainty": "CERTAIN"
+          }
+        ],
+        "recall_used": true,
+        "confidence": 1.0
+      }
+    }
+  ]
+}

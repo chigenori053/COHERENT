@@ -1,0 +1,82 @@
+{
+  "test_id": "PHASE_D_1_SUITE",
+  "results": [
+    {
+      "test_id": "D-1-TC-01",
+      "forward_test": {
+        "passed": true,
+        "output_text": "温度が高い場合、冷却を実行する。"
+      },
+      "reverse_test": {
+        "passed": true,
+        "semantic_diff": []
+      },
+      "final_result": "PASS"
+    },
+    {
+      "test_id": "D-1-TC-02",
+      "forward_test": {
+        "passed": true,
+        "output_text": "雨の場合、試合を中止する。\nただし、屋内の場合はこの限りではない。"
+      },
+      "reverse_test": {
+        "passed": true,
+        "semantic_diff": []
+      },
+      "final_result": "PASS"
+    },
+    {
+      "test_id": "D-1-TC-03",
+      "forward_test": {
+        "passed": true,
+        "output_text": "月曜日の場合、出社する。\nただし、祝日の場合はこの限りではない。"
+      },
+      "reverse_test": {
+        "passed": true,
+        "semantic_diff": []
+      },
+      "final_result": "PASS"
+    },
+    {
+      "test_id": "D-1-TC-04",
+      "forward_test": {
+        "passed": true,
+        "output_text": "指定された条件が満たされた場合、送信する。\n※ 以下の情報が不足しています：\n・何が完了した状態か不明"
+      },
+      "reverse_test": {
+        "passed": true,
+        "semantic_diff": []
+      },
+      "final_result": "PASS"
+    },
+    {
+      "test_id": "D-1-TC-05",
+      "forward_test": {
+        "passed": true,
+        "output_text": "バッテリーが20%未満の場合、省電力モードに切り替える。"
+      },
+      "reverse_test": {
+        "passed": true,
+        "semantic_diff": []
+      },
+      "final_result": "PASS"
+    },
+    {
+      "test_id": "D-1-TC-06",
+      "forward_test": {
+        "passed": true,
+        "output_text": "指定された操作を行う（不明です）。"
+      },
+      "reverse_test": {
+        "passed": true,
+        "semantic_diff": []
+      },
+      "final_result": "PASS"
+    }
+  ],
+  "summary": {
+    "total": 6,
+    "passed": 6,
+    "failed": 0
+  }
+}
